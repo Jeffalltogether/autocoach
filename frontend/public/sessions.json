@@ -2,7 +2,13 @@
   {
     "id": "1",
     "name": "Hockey Test Video",
-    "driveVideoUrl": "https://drive.google.com/file/d/YOUR_VIDEO_ID_HERE/view?usp=sharing",
-    "driveJsonUrl": "https://drive.google.com/file/d/YOUR_JSON_ID_HERE/view?usp=sharing"
+    "driveVideoUrl": "https://drive.google.com/file/d/1Ds9SSdqss6Q_W4fSXl8xwxwI-ehycibE/view?usp=drive_link",
+    "driveJsonUrl": "https://drive.google.com/file/d/1Eo8d4rb3_b11OvD49ciyh_26DXPYUH_R/view?usp=drive_link"
+  },
+  {
+    "id": "2",
+    "name": "Pro Game",
+    "driveVideoUrl": "https://drive.google.com/file/d/1qYPRllA-UPnY_E7uK4833Alkp9x9Uphc/view?usp=drive_link",
+    "driveJsonUrl": "https://drive.google.com/file/d/1DfLIsgDh5eP6HZViSCYxw-VVAZQsOFq_/view?usp=drive_link"
   }
 ]
