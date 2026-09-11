@@ -96,6 +96,8 @@ def smooth_tracking_data(frames_data):
                 kx = smooth_track(np.interp(full_frames, data["frames"], data["keypoints"][i]["x"]))
                 ky = smooth_track(np.interp(full_frames, data["frames"], data["keypoints"][i]["y"]))
                 kconf = np.interp(full_frames, data["frames"], data["keypoints"][i]["conf"])
+                data["smooth_kpts"][i] = {"x": kx, "y": ky, "conf": kconf}
+
     # Extract original entities to preserve them across the rebuild
     original_entities = {}
     for f in frames_data:
