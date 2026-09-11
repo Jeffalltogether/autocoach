@@ -125,7 +125,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           className="absolute max-w-full max-h-full"
           style={{ width: videoDimensions.width, height: videoDimensions.height, objectFit: 'contain' }}
           controls={false}
-          autoPlay muted loop={!loopPlayer} // Only use standard HTML5 loop if we aren't enforcing a player loop
+          autoPlay muted playsInline loop={!loopPlayer} // Only use standard HTML5 loop if we aren't enforcing a player loop
           onLoadedMetadata={handleVideoLoad}
         />
 
