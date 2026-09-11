@@ -148,6 +148,7 @@ def main():
     parser.add_argument("--frames", type=int, default=None, help="Max frames to process (for testing)")
     parser.add_argument("--homography", type=str, default=None, help="Path to homography.json")
     parser.add_argument("--camera_calib", type=str, default=None, help="Path to camera_calibration.json")
+    parser.add_argument("--clean_video", action="store_true", help="Do not draw bounding boxes on the output video (useful for frontend rendering)")
     args = parser.parse_args()
     
     import torch
@@ -289,53 +290,52 @@ def main():
         if cam_K is not None:
             frame = cv2.undistort(frame, cam_K, cam_D)
             
-        # Draw Players
-        for player in final_data["frames"][f_idx]["players"]:
-            x, y, w, h = player["x"], player["y"], player["width"], player["height"]
-            x1, y1 = int(x - w/2), int(y - h/2)
-            x2, y2 = int(x + w/2), int(y + h/2)
-            
-            # Change color if they possess the puck
-            box_color = (0, 0, 255) if player.get("has_puck") else (0, 255, 0)
-            
-            cv2.rectangle(frame, (x1, y1), (x2, y2), box_color, 2)
-            
-            # Write ID and Velocity
-            speed_txt = f"{player.get('velocity_mph', 0)} MPH"
-            cv2.putText(frame, f"ID: {player['id']} | {speed_txt}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, box_color, 2)
-            
-            if "keypoints" in player:
-                kpts = player["keypoints"]
-                for p1, p2 in skeleton:
-                    if kpts[p1]["conf"] > 0.3 and kpts[p2]["conf"] > 0.3:
-                        pt1 = (int(kpts[p1]["x"]), int(kpts[p1]["y"]))
-                        pt2 = (int(kpts[p2]["x"]), int(kpts[p2]["y"]))
-                        cv2.line(frame, pt1, pt2, (0, 255, 255), 2)
-                for kp in kpts:
-                    if kp["conf"] > 0.3:
-                        cv2.circle(frame, (int(kp["x"]), int(kp["y"])), 3, (0, 0, 255), -1)
-                        
-                stick = infer_stick_vector(kpts)
-                if stick:
-                    pt_top = (int(stick["top_hand"]["x"]), int(stick["top_hand"]["y"]))
-                    pt_blade = (int(stick["blade"]["x"]), int(stick["blade"]["y"]))
-                    cv2.line(frame, pt_top, pt_blade, (255, 255, 255), 3)
-                    cv2.circle(frame, pt_blade, 6, (0, 0, 0), -1)
-
-        # Draw Custom Entities (Pucks, Goalies, Refs)
-        if "entities" in final_data["frames"][f_idx]:
-            for entity in final_data["frames"][f_idx]["entities"]:
-                x, y, w, h = entity["x"], entity["y"], entity["width"], entity["height"]
+        if not args.clean_video:
+            # Draw Players
+            for player in final_data["frames"][f_idx]["players"]:
+                x, y, w, h = player["x"], player["y"], player["width"], player["height"]
                 x1, y1 = int(x - w/2), int(y - h/2)
                 x2, y2 = int(x + w/2), int(y + h/2)
                 
-                # Different colors for different entities
-                color = (0, 0, 255) # Red for puck by default
-                if "goal" in entity["type"]: color = (255, 0, 0)
-                elif "ref" in entity["type"]: color = (0, 165, 255)
+                # Change color if they possess the puck
+                box_color = (0, 0, 255) if player.get("has_puck") else (0, 255, 0)
                 
-                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
-                cv2.putText(frame, entity["type"], (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+                cv2.rectangle(frame, (x1, y1), (x2, y2), box_color, 2)
+                
+                # Write ID and Velocity
+                speed_txt = f"{player.get('velocity_mph', 0)} MPH"
+                cv2.putText(frame, f"ID: {player['id']} | {speed_txt}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, box_color, 2)
+                
+                if "keypoints" in player:
+                    kpts = player["keypoints"]
+                    for (i, j) in skeleton:
+                        if i < len(kpts) and j < len(kpts):
+                            pt1 = kpts[i]
+                            pt2 = kpts[j]
+                            if pt1["conf"] > 0.1 and pt2["conf"] > 0.1:
+                                cv2.line(frame, (int(pt1["x"]), int(pt1["y"])), 
+                                         (int(pt2["x"]), int(pt2["y"])), (255, 0, 0), 2)
+
+                    # Draw Stick Inference (Optional visualization)
+                    if "stick_vector" in player:
+                        bx = int(player["x"] + player["stick_vector"]["dx"])
+                        by = int(player["y"] + player["stick_vector"]["dy"])
+                        cv2.line(frame, (int(player["x"]), int(player["y"])), (bx, by), (0, 0, 0), 3)
+                        
+            # Draw Custom Entities (Pucks, Goalies, Refs)
+            if "entities" in final_data["frames"][f_idx]:
+                for entity in final_data["frames"][f_idx]["entities"]:
+                    x, y, w, h = entity["x"], entity["y"], entity["width"], entity["height"]
+                    x1, y1 = int(x - w/2), int(y - h/2)
+                    x2, y2 = int(x + w/2), int(y + h/2)
+                    
+                    color = (255, 255, 255)
+                    if "puck" in entity["type"]: color = (0, 255, 255) # Yellow for puck
+                    elif "goalie" in entity["type"]: color = (255, 0, 255)
+                    elif "ref" in entity["type"]: color = (0, 165, 255)
+                    
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
+                    cv2.putText(frame, entity["type"], (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
 
         out.write(frame)
         if f_idx % 30 == 0:

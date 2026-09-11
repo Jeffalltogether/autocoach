@@ -30,7 +30,8 @@ for video in videos:
         "python", "/content/main.py", 
         "--video", video_path, 
         "--out_json", out_json, 
-        "--out_video", out_video
+        "--out_video", out_video,
+        "--clean_video"
     ]
     
     # Pass calibration and homography if they exist in the output directory
