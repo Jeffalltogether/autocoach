@@ -4,9 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "predev": "node scripts/generate-sessions.js",
     "dev": "vite",
-    "prebuild": "node scripts/generate-sessions.js",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"

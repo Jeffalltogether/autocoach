@@ -15,6 +15,8 @@ interface VideoPlayerProps {
   showPlayerPose: boolean;
   trackPlayer: boolean;
   loopPlayer: boolean;
+  showPucks: boolean;
+  puckConfThreshold: number;
   cropSize: number;
   fps: number;
 }
@@ -39,6 +41,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   showPlayerPose,
   trackPlayer,
   loopPlayer,
+  showPucks,
+  puckConfThreshold,
   cropSize,
   fps
 }) => {
@@ -206,6 +210,28 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 >
                   <div className={`absolute -top-6 left-0 text-white text-xs px-1 font-mono whitespace-nowrap ${isSelected ? 'bg-red-500' : 'bg-blue-500'}`}>
                     Player #{player.id}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Draw Puck Bounding Boxes */}
+            {showPucks && currentFrameData.entities?.filter(e => e.type === 'puck' && e.conf >= puckConfThreshold).map((puck, idx) => {
+              const top = puck.y - puck.height / 2;
+              const left = puck.x - puck.width / 2;
+              return (
+                <div 
+                  key={`puck-${idx}`}
+                  className="absolute border-2 border-amber-400 bg-amber-400/20 z-10"
+                  style={{
+                    left: `${(left / videoDimensions.width) * 100}%`,
+                    top: `${(top / videoDimensions.height) * 100}%`,
+                    width: `${(puck.width / videoDimensions.width) * 100}%`,
+                    height: `${(puck.height / videoDimensions.height) * 100}%`,
+                  }}
+                >
+                  <div className="absolute -top-5 left-0 text-white text-xs px-1 font-mono whitespace-nowrap bg-amber-500 rounded-sm">
+                    Puck
                   </div>
                 </div>
               );

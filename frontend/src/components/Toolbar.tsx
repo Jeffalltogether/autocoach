@@ -17,6 +17,10 @@ interface ToolbarProps {
   setTrackPlayer: (v: boolean) => void;
   loopPlayer: boolean;
   setLoopPlayer: (v: boolean) => void;
+  showPucks: boolean;
+  setShowPucks: (v: boolean) => void;
+  puckConfThreshold: number;
+  setPuckConfThreshold: (v: number) => void;
   cropSize: number;
   setCropSize: (v: number) => void;
 }
@@ -37,6 +41,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   setTrackPlayer,
   loopPlayer,
   setLoopPlayer,
+  showPucks,
+  setShowPucks,
+  puckConfThreshold,
+  setPuckConfThreshold,
   cropSize,
   setCropSize,
 }) => {
@@ -176,6 +184,33 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             />
             All Poses
           </label>
+        </div>
+        
+        <div className="flex flex-col gap-1 shrink-0">
+          <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-400 hover:text-slate-200">
+            <input 
+              type="checkbox" 
+              className="rounded border-slate-600 text-amber-500 focus:ring-amber-600 bg-slate-800"
+              checked={showPucks}
+              onChange={(e) => setShowPucks(e.target.checked)}
+            />
+            Puck
+          </label>
+          {showPucks && (
+            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+              <span>Conf:</span>
+              <input 
+                type="range" 
+                min="0" 
+                max="1" 
+                step="0.05"
+                value={puckConfThreshold}
+                onChange={(e) => setPuckConfThreshold(Number(e.target.value))}
+                className="w-16"
+              />
+              <span className="font-mono w-8 text-right">{puckConfThreshold.toFixed(2)}</span>
+            </div>
+          )}
         </div>
 
         <div className="h-8 w-px bg-slate-700 shrink-0"></div>

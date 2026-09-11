@@ -78,6 +78,11 @@ def smooth_tracking_data(frames_data):
                     players[pid]["keypoints"][i]["x"].append(kp["x"])
                     players[pid]["keypoints"][i]["y"].append(kp["y"])
                     players[pid]["keypoints"][i]["conf"].append(kp["conf"])
+            else:
+                for i in range(17):
+                    players[pid]["keypoints"][i]["x"].append(0.0)
+                    players[pid]["keypoints"][i]["y"].append(0.0)
+                    players[pid]["keypoints"][i]["conf"].append(0.0)
                     
     print(f"Extracted tracks for {len(players)} players. Applying filter...")
     for pid, data in players.items():
