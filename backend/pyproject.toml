@@ -8,6 +8,8 @@ dependencies = [
     "numpy",
     "pupil-apriltags",
     "ultralytics", # For YOLO detections
+    "scipy",
+    "huggingface_hub",
 ]
 
 [build-system]
