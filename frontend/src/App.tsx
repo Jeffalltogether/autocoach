@@ -8,7 +8,8 @@ export interface Session { id: string; name: string; videoUrl: string; jsonUrl: 
 
 export interface Keypoint { x: number; y: number; conf: number; }
 export interface PlayerTracking { id: number; x: number; y: number; width: number; height: number; keypoints?: Keypoint[]; }
-export interface FrameData { frame: number; players: PlayerTracking[]; }
+export interface Entity { type: string; x: number; y: number; width: number; height: number; conf: number; }
+export interface FrameData { frame: number; players: PlayerTracking[]; entities?: Entity[]; }
 
 export interface Player { id: number; name: string; firstFrame: number; lastFrame: number; }
 
@@ -25,22 +26,53 @@ function App() {
   const [showPlayerPose, setShowPlayerPose] = useState(true);
   const [trackPlayer, setTrackPlayer] = useState(false);
   const [loopPlayer, setLoopPlayer] = useState(false);
+  const [showPucks, setShowPucks] = useState(false);
+  const [puckConfThreshold, setPuckConfThreshold] = useState(0.5);
   const [cropSize, setCropSize] = useState(400);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const [fps] = useState(30);
 
-  // Fetch dynamic sessions
+  // Fetch dynamic sessions — try Vite dev API first, fallback to static sessions.json
   useEffect(() => {
-    fetch('/sessions.json')
-      .then(res => res.json())
-      .then((data: Session[]) => {
+    const loadSessions = async () => {
+      try {
+        let res = await fetch('/api/sessions');
+        if (!res.ok) throw new Error('API not available');
+        const data: Session[] = await res.json();
         setSessions(data);
-        if (data.length > 0) {
-          setSelectedSession(data[0]);
+        if (data.length > 0) setSelectedSession(data[0]);
+      } catch {
+        try {
+          const res = await fetch('/sessions.json');
+          const data: any[] = await res.json();
+          const mappedData: Session[] = data.map(s => {
+            let videoUrl = s.videoUrl || s.driveVideoUrl || '';
+            let jsonUrl = s.jsonUrl || s.driveJsonUrl || '';
+            
+            // Translate Google Drive video share URL to a direct streaming URL
+            if (s.driveVideoUrl) {
+              const match = s.driveVideoUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+              if (match) videoUrl = `https://drive.google.com/uc?export=download&id=${match[1]}`;
+            }
+            
+            // Translate Google Drive JSON share URL to the Vercel API proxy
+            if (s.driveJsonUrl) {
+              const match = s.driveJsonUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+              if (match) jsonUrl = `/api/drive?id=${match[1]}`;
+            }
+            
+            return { ...s, videoUrl, jsonUrl };
+          });
+          
+          setSessions(mappedData);
+          if (mappedData.length > 0) setSelectedSession(mappedData[0]);
+        } catch (err) {
+          console.error("Error loading sessions", err);
         }
-      })
-      .catch(err => console.error("Error loading sessions.json", err));
+      }
+    };
+    loadSessions();
   }, []);
 
   // Fetch tracking data when session changes
@@ -118,6 +150,8 @@ function App() {
           showPlayerPose={showPlayerPose}
           trackPlayer={trackPlayer}
           loopPlayer={loopPlayer}
+          showPucks={showPucks}
+          puckConfThreshold={puckConfThreshold}
           cropSize={cropSize}
           fps={fps}
         />
@@ -156,6 +190,10 @@ function App() {
           setTrackPlayer={setTrackPlayer}
           loopPlayer={loopPlayer}
           setLoopPlayer={setLoopPlayer}
+          showPucks={showPucks}
+          setShowPucks={setShowPucks}
+          puckConfThreshold={puckConfThreshold}
+          setPuckConfThreshold={setPuckConfThreshold}
           cropSize={cropSize}
           setCropSize={setCropSize}
         />
