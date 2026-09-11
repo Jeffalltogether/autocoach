@@ -33,6 +33,18 @@ for video in videos:
         "--out_video", out_video
     ]
     
+    # Pass calibration and homography if they exist in the output directory
+    camera_calib_path = os.path.join(OUTPUT_DIR, "camera_calibration.json")
+    homography_path = os.path.join(OUTPUT_DIR, "homography.json")
+    
+    if os.path.exists(camera_calib_path):
+        cmd.extend(["--camera_calib", camera_calib_path])
+        print("   -> Attached Camera Calibration (Fisheye Fix)")
+        
+    if os.path.exists(homography_path):
+        cmd.extend(["--homography", homography_path])
+        print("   -> Attached Homography (Physics / MPH)")
+    
     # Run the main.py script for this specific video
     subprocess.run(cmd, check=True)
     print(f"✅ Finished processing '{video}'")

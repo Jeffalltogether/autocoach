@@ -42,7 +42,20 @@ else:
 
 echo "⚙️ Uploading backend code to Colab..."
 ~/.local/bin/colab upload -s $SESSION_NAME src/main.py /content/main.py
+~/.local/bin/colab upload -s $SESSION_NAME src/physics.py /content/physics.py
 ~/.local/bin/colab upload -s $SESSION_NAME src/batch_process.py /content/batch_process.py
+
+echo "⚙️ Uploading Calibration profiles to Google Drive..."
+# We upload these directly to the processed folder so batch_process.py can find them
+if [ -f "../data/processed/camera_calibration.json" ]; then
+    echo "!cp /content/camera_calibration.json /content/drive/MyDrive/autocoach/processed_data/ || true" | ~/.local/bin/colab exec -s $SESSION_NAME
+    ~/.local/bin/colab upload -s $SESSION_NAME ../data/processed/camera_calibration.json /content/drive/MyDrive/autocoach/processed_data/camera_calibration.json
+fi
+
+if [ -f "../data/processed/homography.json" ]; then
+    echo "!cp /content/homography.json /content/drive/MyDrive/autocoach/processed_data/ || true" | ~/.local/bin/colab exec -s $SESSION_NAME
+    ~/.local/bin/colab upload -s $SESSION_NAME ../data/processed/homography.json /content/drive/MyDrive/autocoach/processed_data/homography.json
+fi
 
 echo "⚙️ Executing Batch Pipeline..."
 # Run the batch script which automatically skips already processed videos
