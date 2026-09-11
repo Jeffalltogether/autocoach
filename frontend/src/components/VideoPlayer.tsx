@@ -86,18 +86,31 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setVideoDimensions({ width: video.videoWidth || 1920, height: video.videoHeight || 1080 });
   };
 
-  const trackedPlayer = currentFrameData?.players.find(p => p.id === selectedPlayerId) || currentFrameData?.players[0];
+  // Don't fall back to players[0] if tracking a specific ID that is missing from the frame
+  const trackedPlayer = selectedPlayerId 
+    ? currentFrameData?.players.find(p => p.id === selectedPlayerId)
+    : undefined;
 
   let transformStyle = {};
-  if (trackPlayer && containerRef.current && trackedPlayer) {
-    const scale = Math.max(1, containerRef.current.clientWidth / cropSize);
-    const px = trackedPlayer.x / videoDimensions.width;
-    const py = trackedPlayer.y / videoDimensions.height;
-    transformStyle = {
-      transform: `scale(${scale})`,
-      transformOrigin: `${px * 100}% ${py * 100}%`,
-      transition: 'transform-origin 0.1s linear',
-    };
+  if (trackPlayer && containerRef.current) {
+    if (trackedPlayer) {
+      const scale = Math.max(1, containerRef.current.clientWidth / cropSize);
+      const px = trackedPlayer.x / videoDimensions.width;
+      const py = trackedPlayer.y / videoDimensions.height;
+      transformStyle = {
+        transform: `scale(${scale})`,
+        transformOrigin: `${px * 100}% ${py * 100}%`,
+        transition: 'transform-origin 0.1s linear',
+      };
+    } else {
+      // If the player goes off screen, just hold the current zoom level and don't panic-snap to another player
+      const scale = Math.max(1, containerRef.current.clientWidth / cropSize);
+      transformStyle = {
+        transform: `scale(${scale})`,
+        // Don't update transformOrigin so it stays where they left the screen
+        transition: 'transform 0.3s ease',
+      };
+    }
   } else {
     transformStyle = {
       transform: 'scale(1)',
@@ -125,7 +138,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           className="absolute max-w-full max-h-full"
           style={{ width: videoDimensions.width, height: videoDimensions.height, objectFit: 'contain' }}
           controls={false}
-          autoPlay muted loop={!loopPlayer} // Only use standard HTML5 loop if we aren't enforcing a player loop
+          autoPlay muted playsInline loop={!loopPlayer} // Only use standard HTML5 loop if we aren't enforcing a player loop
           onLoadedMetadata={handleVideoLoad}
         />
 

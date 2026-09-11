@@ -20,14 +20,14 @@ function App() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   
-  const [showAllBoundingBoxes, setShowAllBoundingBoxes] = useState(false);
-  const [showPlayerBoundingBox, setShowPlayerBoundingBox] = useState(true);
-  const [showAllPoses, setShowAllPoses] = useState(false);
-  const [showPlayerPose, setShowPlayerPose] = useState(true);
+  const [showAllBoundingBoxes, setShowAllBoundingBoxes] = useState(true);
+  const [showPlayerBoundingBox, setShowPlayerBoundingBox] = useState(false);
+  const [showAllPoses, setShowAllPoses] = useState(true);
+  const [showPlayerPose, setShowPlayerPose] = useState(false);
   const [trackPlayer, setTrackPlayer] = useState(false);
   const [loopPlayer, setLoopPlayer] = useState(false);
   const [showPucks, setShowPucks] = useState(false);
-  const [puckConfThreshold, setPuckConfThreshold] = useState(0.5);
+  const [puckConfThreshold, setPuckConfThreshold] = useState(0.3);
   const [cropSize, setCropSize] = useState(400);
   
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -43,10 +43,10 @@ function App() {
             let videoUrl = s.videoUrl || s.driveVideoUrl || '';
             let jsonUrl = s.jsonUrl || s.driveJsonUrl || '';
             
-            // Translate Google Drive video share URL to a direct streaming URL
+            // Translate Google Drive video share URL to the Vercel API proxy
             if (s.driveVideoUrl) {
               const match = s.driveVideoUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-              if (match) videoUrl = `https://drive.google.com/uc?export=download&id=${match[1]}`;
+              if (match) videoUrl = `/api/drive?id=${match[1]}`;
             }
             
             // Translate Google Drive JSON share URL to the Vercel API proxy
