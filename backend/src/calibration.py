@@ -24,6 +24,7 @@ def main():
     parser.add_argument("--out", type=str, default="../data/processed/homography.json", help="Output JSON for homography matrix")
     parser.add_argument("--width", type=float, default=100.0, help="Real-world width of the selected area (e.g., feet)")
     parser.add_argument("--height", type=float, default=100.0, help="Real-world height of the selected area (e.g., feet)")
+    parser.add_argument("--camera_calib", type=str, default=None, help="Path to camera_calibration.json if flattening fisheye first")
     args = parser.parse_args()
 
     global clone_img, clicked_points
@@ -36,6 +37,15 @@ def main():
     if not success:
         print(f"Error: Could not read video {args.video}")
         return
+
+    # 1.5 Undistort frame if calibration is provided
+    if args.camera_calib and os.path.exists(args.camera_calib):
+        with open(args.camera_calib, "r") as f:
+            calib = json.load(f)
+        K = np.array(calib["K"], dtype=np.float32)
+        D = np.array(calib["D"], dtype=np.float32)
+        frame = cv2.undistort(frame, K, D)
+        print(f"Applied fisheye correction from {args.camera_calib}")
         
     clone_img = frame.copy()
     
