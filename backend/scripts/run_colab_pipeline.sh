@@ -10,11 +10,11 @@ DRIVE_JSON_PATH="/content/drive/MyDrive/autocoach/processed_data/pro_game_tracki
 DRIVE_OUTPUT_PATH="/content/drive/MyDrive/autocoach/processed_data/pro_game_output.mp4"
 
 echo "🚀 Checking for existing Colab GPU Session ($SESSION_NAME)..."
-if ~/.local/bin/colab status -s $SESSION_NAME >/dev/null 2>&1; then
-    echo "✅ Session '$SESSION_NAME' is already running! Skipping provisioning."
-else
+if ~/.local/bin/colab status -s $SESSION_NAME 2>&1 | grep -q "not found"; then
     echo "🚀 Provisioning new Colab GPU Session ($SESSION_NAME)..."
     ~/.local/bin/colab new -s $SESSION_NAME --gpu T4
+else
+    echo "✅ Session '$SESSION_NAME' is already running! Skipping provisioning."
 fi
 
 echo "📂 Mounting Google Drive..."
