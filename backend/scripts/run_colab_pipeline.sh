@@ -67,3 +67,8 @@ echo "🛑 Tearing down session..."
 ~/.local/bin/colab stop -s $SESSION_NAME
 
 echo "✅ Pipeline Complete!"
+
+
+echo "📝 Updating frontend sessions.json..."
+uv run python scripts/update_sessions.py
+echo "🎉 All Done!"
