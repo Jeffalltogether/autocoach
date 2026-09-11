@@ -47,15 +47,21 @@ echo "⚙️ Uploading backend code to Colab..."
 
 echo "⚙️ Uploading Calibration profiles to Google Drive..."
 # We upload these directly to the processed folder so batch_process.py can find them
-if [ -f "../data/processed/camera_calibration.json" ]; then
-    echo "!cp /content/camera_calibration.json /content/drive/MyDrive/autocoach/processed_data/ || true" | ~/.local/bin/colab exec -s $SESSION_NAME
-    ~/.local/bin/colab upload -s $SESSION_NAME ../data/processed/camera_calibration.json /content/drive/MyDrive/autocoach/processed_data/camera_calibration.json
-fi
+for f in ../data/processed/*_camera_calib.json; do
+    if [ -f "$f" ]; then
+        filename=$(basename -- "$f")
+        echo "!cp /content/$filename /content/drive/MyDrive/autocoach/processed_data/ || true" | ~/.local/bin/colab exec -s $SESSION_NAME
+        ~/.local/bin/colab upload -s $SESSION_NAME "$f" "/content/drive/MyDrive/autocoach/processed_data/$filename"
+    fi
+done
 
-if [ -f "../data/processed/homography.json" ]; then
-    echo "!cp /content/homography.json /content/drive/MyDrive/autocoach/processed_data/ || true" | ~/.local/bin/colab exec -s $SESSION_NAME
-    ~/.local/bin/colab upload -s $SESSION_NAME ../data/processed/homography.json /content/drive/MyDrive/autocoach/processed_data/homography.json
-fi
+for f in ../data/processed/*_homography.json; do
+    if [ -f "$f" ]; then
+        filename=$(basename -- "$f")
+        echo "!cp /content/$filename /content/drive/MyDrive/autocoach/processed_data/ || true" | ~/.local/bin/colab exec -s $SESSION_NAME
+        ~/.local/bin/colab upload -s $SESSION_NAME "$f" "/content/drive/MyDrive/autocoach/processed_data/$filename"
+    fi
+done
 
 echo "⚙️ Executing Batch Pipeline..."
 # Run the batch script which automatically skips already processed videos

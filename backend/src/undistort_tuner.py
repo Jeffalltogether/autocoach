@@ -10,8 +10,12 @@ def nothing(x):
 def main():
     parser = argparse.ArgumentParser(description="Interactive Fisheye Undistortion Tuner")
     parser.add_argument("--video", type=str, required=True, help="Path to raw video file")
-    parser.add_argument("--out", type=str, default="../data/processed/camera_calibration.json")
+    parser.add_argument("--out", type=str, default=None, help="Output json path")
     args = parser.parse_args()
+
+    if args.out is None:
+        base_name = os.path.splitext(os.path.basename(args.video))[0]
+        args.out = f"../data/processed/{base_name}_camera_calib.json"
 
     cap = cv2.VideoCapture(args.video)
     success, frame = cap.read()

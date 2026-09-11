@@ -35,8 +35,8 @@ for video in videos:
     ]
     
     # Pass calibration and homography if they exist in the output directory
-    camera_calib_path = os.path.join(OUTPUT_DIR, "camera_calibration.json")
-    homography_path = os.path.join(OUTPUT_DIR, "homography.json")
+    camera_calib_path = os.path.join(OUTPUT_DIR, f"{base_name}_camera_calib.json")
+    homography_path = os.path.join(OUTPUT_DIR, f"{base_name}_homography.json")
     
     if os.path.exists(camera_calib_path):
         cmd.extend(["--camera_calib", camera_calib_path])

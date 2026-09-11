@@ -20,12 +20,16 @@ def mouse_callback(event, x, y, flags, param):
 
 def main():
     parser = argparse.ArgumentParser(description="Interactive Rink Calibration")
-    parser.add_argument("--video", type=str, required=True, help="Path to raw video file")
-    parser.add_argument("--out", type=str, default="../data/processed/homography.json", help="Output JSON for homography matrix")
+    parser.add_argument("--video", type=str, required=True, help="Path to video file")
+    parser.add_argument("--out", type=str, default=None, help="Output JSON for homography matrix")
     parser.add_argument("--width", type=float, default=100.0, help="Real-world width of the selected area (e.g., feet)")
     parser.add_argument("--height", type=float, default=100.0, help="Real-world height of the selected area (e.g., feet)")
     parser.add_argument("--camera_calib", type=str, default=None, help="Path to camera_calibration.json if flattening fisheye first")
     args = parser.parse_args()
+    
+    if args.out is None:
+        base_name = os.path.splitext(os.path.basename(args.video))[0]
+        args.out = f"../data/processed/{base_name}_homography.json"
 
     global clone_img, clicked_points
     
