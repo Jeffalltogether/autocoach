@@ -145,9 +145,14 @@ def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"Loading YOLO models (Pose + Custom HockeyAI) on device: {device}...", flush=True)
     
-    # Check if models exist in the Drive folder (we can assume they are passed as paths if we wanted, or just hardcode the Colab drive path fallback, but for now just load by name and Ultralytics handles it or they are local)
-    pose_model = YOLO("yolov8n-pose.pt") 
-    hockey_model = YOLO("/content/drive/MyDrive/autocoach/models/HockeyAI_model_weight.pt" if device == 'cuda' else "HockeyAI_model_weight.pt")
+    # Point both models to the persistent Google Drive folder on Colab to prevent re-downloading
+    drive_model_dir = "/content/drive/MyDrive/autocoach/models"
+    
+    pose_path = f"{drive_model_dir}/yolov8n-pose.pt" if device == 'cuda' else "yolov8n-pose.pt"
+    hockey_path = f"{drive_model_dir}/HockeyAI_model_weight.pt" if device == 'cuda' else "HockeyAI_model_weight.pt"
+    
+    pose_model = YOLO(pose_path) 
+    hockey_model = YOLO(hockey_path)
     
     cap = cv2.VideoCapture(args.video)
     if not cap.isOpened():
