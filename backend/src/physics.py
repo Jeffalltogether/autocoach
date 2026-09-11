@@ -120,7 +120,8 @@ def apply_physics_and_events(frames_data, homography_matrix, fps):
     # Wrap everything in the new top-level structure
     final_output = {
         "metadata": {
-            "fps": fps
+            "fps": fps,
+            "homography_matrix": homography_matrix.tolist() if homography_matrix is not None else None
         },
         "player_stats": player_stats,
         "timeline_events": timeline_events,

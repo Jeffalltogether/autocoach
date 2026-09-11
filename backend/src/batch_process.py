@@ -18,7 +18,7 @@ for video in videos:
     video_path = os.path.join(INPUT_DIR, video)
     
     out_json = os.path.join(OUTPUT_DIR, f"{base_name}_tracking.json")
-    out_video = os.path.join(OUTPUT_DIR, f"{base_name}_output.mp4")
+    out_video = os.path.join(OUTPUT_DIR, f"{base_name}_processed.mp4")
     
     # Check if this video has already been processed
     if os.path.exists(out_json) and os.path.exists(out_video):

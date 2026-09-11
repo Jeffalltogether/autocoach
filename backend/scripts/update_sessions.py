@@ -20,7 +20,7 @@ def main():
         if file.endswith("_processed.mp4"):
             base_name = file.replace("_processed.mp4", "")
             video_url = f"/data/processed/{base_name}_processed.mp4"
-            json_url = f"/data/processed/{base_name}.json"
+            json_url = f"/data/processed/{base_name}_tracking.json"
             
             if video_url not in existing_videos:
                 # Need to add new entry
