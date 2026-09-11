@@ -14,7 +14,13 @@ export default async function handler(req: Request) {
   const url = `https://drive.google.com/uc?export=download&id=${id}`;
   
   try {
-    const response = await fetch(url);
+    const fetchHeaders = new Headers();
+    const range = req.headers.get('range');
+    if (range) {
+      fetchHeaders.set('range', range);
+    }
+
+    const response = await fetch(url, { headers: fetchHeaders });
     
     // Create new headers based on the response
     const headers = new Headers(response.headers);
