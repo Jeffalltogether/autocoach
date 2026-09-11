@@ -138,9 +138,13 @@ def main():
     parser.add_argument("--frames", type=int, default=None, help="Max frames to process (for testing)")
     args = parser.parse_args()
     
-    print("Loading YOLO models (Pose + Custom HockeyAI)...", flush=True)
+    import torch
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f"Loading YOLO models (Pose + Custom HockeyAI) on device: {device}...", flush=True)
+    
+    # Check if models exist in the Drive folder (we can assume they are passed as paths if we wanted, or just hardcode the Colab drive path fallback, but for now just load by name and Ultralytics handles it or they are local)
     pose_model = YOLO("yolov8n-pose.pt") 
-    hockey_model = YOLO("HockeyAI_model_weight.pt")
+    hockey_model = YOLO("/content/drive/MyDrive/autocoach/models/HockeyAI_model_weight.pt" if device == 'cuda' else "HockeyAI_model_weight.pt")
     
     cap = cv2.VideoCapture(args.video)
     if not cap.isOpened():
@@ -157,10 +161,10 @@ def main():
             break
 
         # 1. Run Pose Model (for players & skeletons)
-        pose_results = pose_model.track(frame, persist=True, classes=[0], verbose=False, device='cpu')
+        pose_results = pose_model.track(frame, persist=True, classes=[0], verbose=False, device=device)
         
         # 2. Run Hockey Model (for pucks, goalies, referees, etc.)
-        hockey_results = hockey_model(frame, verbose=False, device='cpu')
+        hockey_results = hockey_model(frame, verbose=False, device=device)
         
         frame_data = {"frame": frame_idx, "players": [], "entities": []}
         
@@ -207,7 +211,7 @@ def main():
         
         tracking_data.append(frame_data)
         frame_idx += 1
-        if frame_idx % 100 == 0:
+        if frame_idx % 30 == 0:
             print(f"Extracted {frame_idx} frames...", flush=True)
 
     cap.release()
@@ -280,7 +284,7 @@ def main():
                 cv2.putText(frame, entity["type"], (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
 
         out.write(frame)
-        if f_idx % 100 == 0:
+        if f_idx % 30 == 0:
             print(f"Rendered {f_idx} frames...", flush=True)
 
     cap.release()
