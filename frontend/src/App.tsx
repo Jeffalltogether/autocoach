@@ -99,12 +99,15 @@ function App() {
 
     fetch(selectedSession.jsonUrl)
       .then(res => res.json())
-      .then((data: FrameData[]) => {
-        setTrackingData(data);
+      .then((data) => {
+        // Handle both old flat array format and new nested object format
+        const framesArray: FrameData[] = Array.isArray(data) ? data : (data.frames || []);
+        
+        setTrackingData(framesArray);
         
         // Extract unique players and their first/last appearance
         const playerMap = new Map<number, {first: number, last: number}>();
-        data.forEach(frame => {
+        framesArray.forEach(frame => {
           frame.players.forEach(p => {
             if (!playerMap.has(p.id)) {
               playerMap.set(p.id, {first: frame.frame, last: frame.frame});
