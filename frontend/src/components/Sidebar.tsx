@@ -1,7 +1,8 @@
 import type { Session } from '../App';
 import type { Player, FrameData } from '../App';
 import { MiniMap } from './MiniMap';
-import React, { RefObject } from 'react';
+import React from 'react';
+import type { RefObject } from 'react';
 
 interface SidebarProps {
   sessions: Session[];

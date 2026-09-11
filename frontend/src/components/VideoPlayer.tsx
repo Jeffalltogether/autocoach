@@ -229,7 +229,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             })}
 
             {/* Draw Puck Bounding Boxes */}
-            {showPucks && currentFrameData.entities?.filter(e => e.type === 'puck' && e.conf >= puckConfThreshold).map((puck, idx) => {
+            {showPucks && currentFrameData.entities?.filter(e => e.type === 'puck' && (e.conf ?? 1) >= puckConfThreshold).map((puck, idx) => {
               const top = puck.y - puck.height / 2;
               const left = puck.x - puck.width / 2;
               return (

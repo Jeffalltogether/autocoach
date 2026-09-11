@@ -7,8 +7,29 @@ import { TimelinePlot } from './components/TimelinePlot';
 export interface Session { id: string; name: string; videoUrl: string; jsonUrl: string; }
 
 export interface Keypoint { x: number; y: number; conf: number; }
-export interface PlayerTracking { id: number; x: number; y: number; width: number; height: number; keypoints?: Keypoint[]; }
-export interface Entity { type: string; x: number; y: number; width: number; height: number; conf: number; }
+export interface Entity {
+  type: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  conf?: number;
+  real_x?: number;
+  real_y?: number;
+}
+export interface PlayerTracking {
+  id: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  real_x?: number;
+  real_y?: number;
+  has_puck?: boolean;
+  velocity_mph?: number;
+  keypoints?: Keypoint[];
+  stick_vector?: { dx: number; dy: number };
+}
 export interface FrameData { frame: number; players: PlayerTracking[]; entities?: Entity[]; }
 
 export interface Player { id: number; name: string; firstFrame: number; lastFrame: number; }

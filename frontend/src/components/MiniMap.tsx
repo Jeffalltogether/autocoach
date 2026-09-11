@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef, RefObject } from 'react';
+import React, { useEffect, useState } from 'react';
+import type { RefObject } from 'react';
 import type { FrameData } from '../App';
 
 interface MiniMapProps {
