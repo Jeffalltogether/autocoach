@@ -65,14 +65,18 @@ else:
         input_path = os.path.join(DRIVE_INPUT_DIR, video)
         output_prefix = os.path.join(DRIVE_OUTPUT_DIR, video.replace('.mp4', ''))
         
+        json_path = os.path.join(DRIVE_OUTPUT_DIR, video.replace('.mp4', '.json'))
+        video_out_path = os.path.join(DRIVE_OUTPUT_DIR, video.replace('.mp4', '_processed.mp4'))
+        
         print(f"\nProcessing: {video}")
         # Run the backend main.py script
-        # Note: You may need to adjust the arguments based on how main.py is structured to accept input/output paths.
         cmd = [
             "python", BACKEND_SRC, 
-            "--input", input_path, 
-            "--output_dir", DRIVE_OUTPUT_DIR
+            "--video", input_path, 
+            "--out_json", json_path,
+            "--out_video", video_out_path
         ]
+
         
         result = subprocess.run(cmd, capture_output=True, text=True)
         
