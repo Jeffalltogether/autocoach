@@ -1,4 +1,4 @@
-import type { Session } from '../mockData';
+import type { Session } from '../App';
 import type { Player } from '../App';
 
 interface SidebarProps {
@@ -34,8 +34,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   : 'hover:bg-slate-700'
               }`}
             >
-              <div className="text-sm font-medium">{session.date}</div>
-              <div className="text-xs text-slate-300">{session.time}</div>
+              <div className="text-sm font-medium">{session.name}</div>
+              
             </button>
           ))}
         </div>

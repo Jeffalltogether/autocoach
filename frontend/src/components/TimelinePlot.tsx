@@ -1,14 +1,17 @@
+import { useEffect, useRef } from 'react';
+import type { RefObject } from 'react';
 import type { FrameData } from '../App';
 
 interface TimelinePlotProps {
+  videoRef: RefObject<HTMLVideoElement | null>;
   trackingData: FrameData[];
   selectedPlayerId?: number;
   fps: number;
   onSeek: (time: number) => void;
 }
 
-export const TimelinePlot: React.FC<TimelinePlotProps> = ({ trackingData, selectedPlayerId, fps, onSeek }) => {
-  // If we have tracking data and a selected player, let's plot their X-velocity over time (as a mock)
+export const TimelinePlot: React.FC<TimelinePlotProps> = ({ videoRef, trackingData, selectedPlayerId, fps, onSeek }) => {
+  const playheadRef = useRef<HTMLDivElement>(null);
   const plotPoints: { x: number, y: number, time: number }[] = [];
   
   if (selectedPlayerId && trackingData.length > 0) {
@@ -25,7 +28,6 @@ export const TimelinePlot: React.FC<TimelinePlotProps> = ({ trackingData, select
     });
   }
 
-  // Simple path generator for velocity
   const maxFrame = trackingData.length > 0 ? trackingData[trackingData.length - 1].frame : 100;
   
   let pathD = "M0,100";
@@ -43,6 +45,23 @@ export const TimelinePlot: React.FC<TimelinePlotProps> = ({ trackingData, select
     const targetFrame = Math.floor(percent * maxFrame);
     onSeek(targetFrame / fps);
   };
+
+  // Sync playhead with video time
+  useEffect(() => {
+    let animationId: number;
+    const updatePlayhead = () => {
+      if (videoRef.current && playheadRef.current && maxFrame > 0) {
+        const time = videoRef.current.currentTime;
+        const totalDuration = maxFrame / fps;
+        let percent = (time / totalDuration) * 100;
+        percent = Math.max(0, Math.min(100, percent));
+        playheadRef.current.style.left = `${percent}%`;
+      }
+      animationId = requestAnimationFrame(updatePlayhead);
+    };
+    animationId = requestAnimationFrame(updatePlayhead);
+    return () => cancelAnimationFrame(animationId);
+  }, [videoRef, maxFrame, fps]);
 
   return (
     <div className="h-32 bg-slate-800 border-t border-slate-700 p-4 flex flex-col shrink-0">
@@ -71,6 +90,15 @@ export const TimelinePlot: React.FC<TimelinePlotProps> = ({ trackingData, select
              <span className="text-slate-600 font-mono text-sm">[ No Data for Player ]</span>
            </div>
         )}
+        
+        {/* Playhead Scrubber Line */}
+        <div 
+          ref={playheadRef}
+          className="absolute top-0 bottom-0 w-px bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)] z-10 flex flex-col items-center pointer-events-none"
+          style={{ left: '0%' }}
+        >
+          <div className="w-3 h-3 bg-white rounded-full -mt-1.5 shadow"></div>
+        </div>
       </div>
     </div>
   );

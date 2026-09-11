@@ -3,50 +3,77 @@ import { Sidebar } from './components/Sidebar';
 import { Toolbar } from './components/Toolbar';
 import { VideoPlayer } from './components/VideoPlayer';
 import { TimelinePlot } from './components/TimelinePlot';
-import { mockSessions } from './mockData';
-import type { Session } from './mockData';
+
+export interface Session { id: string; name: string; videoUrl: string; jsonUrl: string; }
 
 export interface Keypoint { x: number; y: number; conf: number; }
 export interface PlayerTracking { id: number; x: number; y: number; width: number; height: number; keypoints?: Keypoint[]; }
 export interface FrameData { frame: number; players: PlayerTracking[]; }
 
-export interface Player { id: number; name: string; firstFrame: number; }
+export interface Player { id: number; name: string; firstFrame: number; lastFrame: number; }
 
 function App() {
-  const [selectedSession, setSelectedSession] = useState<Session | null>(mockSessions[0]);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [trackingData, setTrackingData] = useState<FrameData[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   
-  const [showBoundingBoxes, setShowBoundingBoxes] = useState(true);
-  const [showPose, setShowPose] = useState(true);
+  const [showAllBoundingBoxes, setShowAllBoundingBoxes] = useState(false);
+  const [showPlayerBoundingBox, setShowPlayerBoundingBox] = useState(true);
+  const [showAllPoses, setShowAllPoses] = useState(false);
+  const [showPlayerPose, setShowPlayerPose] = useState(true);
   const [trackPlayer, setTrackPlayer] = useState(false);
+  const [loopPlayer, setLoopPlayer] = useState(false);
   const [cropSize, setCropSize] = useState(400);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const [fps] = useState(30);
 
-  // Fetch tracking data
+  // Fetch dynamic sessions
   useEffect(() => {
-    fetch('/pose_tracking.json')
+    fetch('/api/sessions')
+      .then(res => res.json())
+      .then((data: Session[]) => {
+        setSessions(data);
+        if (data.length > 0) {
+          setSelectedSession(data[0]);
+        }
+      })
+      .catch(err => console.error("Error loading sessions API", err));
+  }, []);
+
+  // Fetch tracking data when session changes
+  useEffect(() => {
+    if (!selectedSession) return;
+    
+    // Clear out old state immediately while loading
+    setTrackingData([]);
+    setPlayers([]);
+    setSelectedPlayer(null);
+
+    fetch(selectedSession.jsonUrl)
       .then(res => res.json())
       .then((data: FrameData[]) => {
         setTrackingData(data);
         
-        // Extract unique players and their first appearance
-        const playerMap = new Map<number, number>();
+        // Extract unique players and their first/last appearance
+        const playerMap = new Map<number, {first: number, last: number}>();
         data.forEach(frame => {
           frame.players.forEach(p => {
             if (!playerMap.has(p.id)) {
-              playerMap.set(p.id, frame.frame);
+              playerMap.set(p.id, {first: frame.frame, last: frame.frame});
+            } else {
+              playerMap.get(p.id)!.last = frame.frame;
             }
           });
         });
         
-        const extractedPlayers = Array.from(playerMap.entries()).map(([id, firstFrame]) => ({
+        const extractedPlayers = Array.from(playerMap.entries()).map(([id, frames]) => ({
           id,
           name: `Player #${id}`,
-          firstFrame
+          firstFrame: frames.first,
+          lastFrame: frames.last
         })).sort((a, b) => a.id - b.id);
         
         setPlayers(extractedPlayers);
@@ -55,7 +82,7 @@ function App() {
         }
       })
       .catch(err => console.error("Error loading pose tracking data", err));
-  }, []);
+  }, [selectedSession]);
 
   const handleSelectPlayer = (p: Player) => {
     setSelectedPlayer(p);
@@ -69,7 +96,7 @@ function App() {
   return (
     <div className="flex h-screen w-screen bg-slate-900 overflow-hidden font-sans text-slate-200">
       <Sidebar 
-        sessions={mockSessions}
+        sessions={sessions}
         players={players}
         selectedSession={selectedSession}
         selectedPlayer={selectedPlayer}
@@ -80,16 +107,23 @@ function App() {
       <div className="flex-1 flex flex-col min-w-0">
         <VideoPlayer 
           videoRef={videoRef}
+          videoUrl={selectedSession?.videoUrl || ''}
           trackingData={trackingData}
           selectedPlayerId={selectedPlayer?.id}
-          showBoundingBoxes={showBoundingBoxes}
-          showPose={showPose}
+          selectedPlayerFirstFrame={selectedPlayer?.firstFrame}
+          selectedPlayerLastFrame={selectedPlayer?.lastFrame}
+          showAllBoundingBoxes={showAllBoundingBoxes}
+          showPlayerBoundingBox={showPlayerBoundingBox}
+          showAllPoses={showAllPoses}
+          showPlayerPose={showPlayerPose}
           trackPlayer={trackPlayer}
+          loopPlayer={loopPlayer}
           cropSize={cropSize}
           fps={fps}
         />
         
         <TimelinePlot 
+          videoRef={videoRef}
           trackingData={trackingData} 
           selectedPlayerId={selectedPlayer?.id}
           fps={fps}
@@ -99,12 +133,29 @@ function App() {
         />
         
         <Toolbar 
-          showBoundingBoxes={showBoundingBoxes}
-          setShowBoundingBoxes={setShowBoundingBoxes}
-          showPose={showPose}
-          setShowPose={setShowPose}
+          videoRef={videoRef}
+          onSeekToStart={() => {
+            if (videoRef.current && selectedPlayer) {
+              videoRef.current.currentTime = selectedPlayer.firstFrame / fps;
+            }
+          }}
+          onSeekToEnd={() => {
+            if (videoRef.current && selectedPlayer) {
+              videoRef.current.currentTime = selectedPlayer.lastFrame / fps;
+            }
+          }}
+          showAllBoundingBoxes={showAllBoundingBoxes}
+          setShowAllBoundingBoxes={setShowAllBoundingBoxes}
+          showPlayerBoundingBox={showPlayerBoundingBox}
+          setShowPlayerBoundingBox={setShowPlayerBoundingBox}
+          showAllPoses={showAllPoses}
+          setShowAllPoses={setShowAllPoses}
+          showPlayerPose={showPlayerPose}
+          setShowPlayerPose={setShowPlayerPose}
           trackPlayer={trackPlayer}
           setTrackPlayer={setTrackPlayer}
+          loopPlayer={loopPlayer}
+          setLoopPlayer={setLoopPlayer}
           cropSize={cropSize}
           setCropSize={setCropSize}
         />

@@ -4,11 +4,17 @@ import type { FrameData } from '../App';
 
 interface VideoPlayerProps {
   videoRef: RefObject<HTMLVideoElement | null>;
+  videoUrl: string;
   trackingData: FrameData[];
   selectedPlayerId?: number;
-  showBoundingBoxes: boolean;
-  showPose: boolean;
+  selectedPlayerFirstFrame?: number;
+  selectedPlayerLastFrame?: number;
+  showAllBoundingBoxes: boolean;
+  showPlayerBoundingBox: boolean;
+  showAllPoses: boolean;
+  showPlayerPose: boolean;
   trackPlayer: boolean;
+  loopPlayer: boolean;
   cropSize: number;
   fps: number;
 }
@@ -22,11 +28,17 @@ const SKELETON = [
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   videoRef,
+  videoUrl,
   trackingData,
   selectedPlayerId,
-  showBoundingBoxes,
-  showPose,
+  selectedPlayerFirstFrame,
+  selectedPlayerLastFrame,
+  showAllBoundingBoxes,
+  showPlayerBoundingBox,
+  showAllPoses,
+  showPlayerPose,
   trackPlayer,
+  loopPlayer,
   cropSize,
   fps
 }) => {
@@ -36,18 +48,34 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   useEffect(() => {
     let animationId: number;
+
     const syncFrame = () => {
       if (videoRef.current && trackingData.length > 0) {
         const time = videoRef.current.currentTime;
         const frameIndex = Math.floor(time * fps);
         const frameData = trackingData.find(d => d.frame === frameIndex) || trackingData[0];
         setCurrentFrameData(frameData);
+
+        // Watch Player Sequence Logic
+        if (loopPlayer && selectedPlayerId && selectedPlayerFirstFrame !== undefined && selectedPlayerLastFrame !== undefined) {
+          if (frameIndex >= selectedPlayerLastFrame) {
+            if (!videoRef.current.paused) {
+              videoRef.current.pause();
+            }
+            // Clamp to exact last frame so it doesn't overshoot
+            videoRef.current.currentTime = selectedPlayerLastFrame / fps;
+          } else if (frameIndex < selectedPlayerFirstFrame) {
+            // If they seek backwards out of bounds, snap them to the start of the sequence
+            videoRef.current.currentTime = selectedPlayerFirstFrame / fps;
+          }
+        }
       }
       animationId = requestAnimationFrame(syncFrame);
     };
     animationId = requestAnimationFrame(syncFrame);
     return () => cancelAnimationFrame(animationId);
-  }, [trackingData, fps, videoRef]);
+  }, [trackingData, fps, videoRef,
+  videoUrl, selectedPlayerId, loopPlayer, selectedPlayerFirstFrame, selectedPlayerLastFrame]);
 
   const handleVideoLoad = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     const video = e.currentTarget;
@@ -87,13 +115,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           ...transformStyle
         }}
       >
-        <video 
+        <video key={videoUrl} 
           ref={videoRef}
-          src="/video.mp4" 
+          src={videoUrl} 
           className="absolute max-w-full max-h-full"
           style={{ width: videoDimensions.width, height: videoDimensions.height, objectFit: 'contain' }}
           controls={false}
-          autoPlay muted loop
+          autoPlay muted loop={!loopPlayer} // Only use standard HTML5 loop if we aren't enforcing a player loop
           onLoadedMetadata={handleVideoLoad}
         />
 
@@ -109,9 +137,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             }}
           >
             {/* Draw Skeletons via SVG */}
-            {showPose && (
+            {(showAllPoses || showPlayerPose) && (
               <svg className="absolute inset-0 w-full h-full pointer-events-none z-20" viewBox={`0 0 ${videoDimensions.width} ${videoDimensions.height}`}>
                 {currentFrameData.players.map((player) => {
+                  const isSelected = player.id === selectedPlayerId;
+                  if (!showAllPoses && (!isSelected || !showPlayerPose)) return null;
+
                   if (!player.keypoints || !Array.isArray(player.keypoints) || player.keypoints.length < 17) {
                     return null;
                   }
@@ -128,7 +159,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                               key={`line-${idx}`} 
                               x1={pt1.x} y1={pt1.y} 
                               x2={pt2.x} y2={pt2.y} 
-                              stroke={player.id === selectedPlayerId ? "#ef4444" : "#4ade80"} 
+                              stroke={isSelected ? "#ef4444" : "#4ade80"} 
                               strokeWidth="8" strokeOpacity="0.9" 
                             />
                           );
@@ -143,7 +174,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                               key={`pt-${idx}`} 
                               cx={pt.x} cy={pt.y} 
                               r="8" 
-                              fill={player.id === selectedPlayerId ? "#dc2626" : "#22c55e"} 
+                              fill={isSelected ? "#dc2626" : "#22c55e"} 
                             />
                           );
                         }
@@ -156,10 +187,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             )}
 
             {/* Draw Bounding Boxes */}
-            {showBoundingBoxes && currentFrameData.players.map((player) => {
+            {(showAllBoundingBoxes || showPlayerBoundingBox) && currentFrameData.players.map((player) => {
+              const isSelected = player.id === selectedPlayerId;
+              if (!showAllBoundingBoxes && (!isSelected || !showPlayerBoundingBox)) return null;
+
               const top = player.y - player.height / 2;
               const left = player.x - player.width / 2;
-              const isSelected = player.id === selectedPlayerId;
               return (
                 <div 
                   key={`box-${player.id}`}
