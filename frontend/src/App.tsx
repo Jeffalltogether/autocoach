@@ -33,19 +33,12 @@ function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [fps] = useState(30);
 
-  // Fetch dynamic sessions — try Vite dev API first, fallback to static sessions.json
+  // Fetch sessions from the static configuration file
   useEffect(() => {
     const loadSessions = async () => {
       try {
-        let res = await fetch('/api/sessions');
-        if (!res.ok) throw new Error('API not available');
-        const data: Session[] = await res.json();
-        setSessions(data);
-        if (data.length > 0) setSelectedSession(data[0]);
-      } catch {
-        try {
-          const res = await fetch('/sessions.json');
-          const data: any[] = await res.json();
+        const res = await fetch('/sessions.json');
+        const data: any[] = await res.json();
           const mappedData: Session[] = data.map(s => {
             let videoUrl = s.videoUrl || s.driveVideoUrl || '';
             let jsonUrl = s.jsonUrl || s.driveJsonUrl || '';
@@ -67,9 +60,8 @@ function App() {
           
           setSessions(mappedData);
           if (mappedData.length > 0) setSelectedSession(mappedData[0]);
-        } catch (err) {
-          console.error("Error loading sessions", err);
-        }
+      } catch (err) {
+        console.error("Error loading sessions", err);
       }
     };
     loadSessions();
