@@ -26,7 +26,7 @@ def main():
                 # Need to add new entry
                 new_session = {
                     "id": base_name,
-                    "title": base_name.replace("_", " ").title(),
+                    "name": base_name.replace("_", " ").title(),
                     "date": datetime.now().strftime("%Y-%m-%d"),
                     "videoUrl": video_url,
                     "jsonUrl": json_url
