@@ -91,5 +91,27 @@ else:
 print("\nBatch processing complete!")
 ```
 
+## Calibrating the Rink (Local Mac)
+Before generating physics analytics (like player MPH), you must calibrate the video locally on your Mac using the Neutral Zone method. 
+
+1. **Flatten the Fish-eye (Optional but Recommended)**
+   ```bash
+   uv run python src/undistort_tuner.py --video ../data/raw/your_video.mp4
+   ```
+   Adjust the sliders until the boards are perfectly straight, then press ENTER to save `camera_calibration.json`.
+
+2. **Map the Neutral Zone (Homography)**
+   A standard NHL/USA Hockey rink's neutral zone (the area between the two blue lines) is exactly **85 feet wide by 50 feet long**. Pass these dimensions into the calibration tool:
+   ```bash
+   uv run python src/calibration.py --video ../data/raw/your_video.mp4 --camera_calib ../data/processed/camera_calibration.json --width 85 --height 50
+   ```
+   When the window opens, click the 4 corners where the blue lines intersect the side boards in this exact order:
+   1. Top-Left (Left blue line & top boards)
+   2. Top-Right (Right blue line & top boards)
+   3. Bottom-Right (Right blue line & bottom boards)
+   4. Bottom-Left (Left blue line & bottom boards)
+   
+   Press ENTER to save `homography.json`.
+
 ## Integrating with the Frontend
 Once the videos are processed and the JSON data is saved to `MyDrive/autocoach/processed_data`, you can download those files and place them in your frontend's `public/` directory for Vercel to serve, or eventually set up an API to fetch them dynamically!
