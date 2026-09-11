@@ -32,7 +32,7 @@ function App() {
 
   // Fetch dynamic sessions
   useEffect(() => {
-    fetch('/api/sessions')
+    fetch('/sessions.json')
       .then(res => res.json())
       .then((data: Session[]) => {
         setSessions(data);
@@ -40,7 +40,7 @@ function App() {
           setSelectedSession(data[0]);
         }
       })
-      .catch(err => console.error("Error loading sessions API", err));
+      .catch(err => console.error("Error loading sessions.json", err));
   }, []);
 
   // Fetch tracking data when session changes
