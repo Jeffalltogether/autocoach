@@ -216,3 +216,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Rust
+target/
+
+# Data
+data/
+
+*.pt
+.DS_Store
