@@ -146,9 +146,31 @@ def main():
     parser.add_argument("--out_json", type=str, default="../data/processed/hockey_tracking_final.json")
     parser.add_argument("--out_video", type=str, default="../data/processed/hockey_tracking_final.mp4")
     parser.add_argument("--frames", type=int, default=None, help="Max frames to process (for testing)")
+    parser.add_argument("--homography", type=str, default=None, help="Path to homography.json")
+    parser.add_argument("--camera_calib", type=str, default=None, help="Path to camera_calibration.json")
     args = parser.parse_args()
     
     import torch
+    from physics import apply_physics_and_events
+    import os
+    
+    # Load Camera Calibration if provided
+    cam_K, cam_D = None, None
+    if args.camera_calib and os.path.exists(args.camera_calib):
+        with open(args.camera_calib, "r") as f:
+            calib = json.load(f)
+            cam_K = np.array(calib["K"], dtype=np.float32)
+            cam_D = np.array(calib["D"], dtype=np.float32)
+            print(f"Loaded fisheye correction from {args.camera_calib}")
+            
+    # Load Homography if provided
+    H_matrix = None
+    if args.homography and os.path.exists(args.homography):
+        with open(args.homography, "r") as f:
+            homog = json.load(f)
+            H_matrix = np.array(homog["homography_matrix"], dtype=np.float32)
+            print(f"Loaded homography matrix from {args.homography}")
+    
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"Loading YOLO models (Pose + Custom HockeyAI) on device: {device}...", flush=True)
     
@@ -166,6 +188,7 @@ def main():
         print(f"Error opening video file: {args.video}")
         return
         
+    fps = cap.get(cv2.CAP_PROP_FPS)
     tracking_data = []
     frame_idx = 0
     
@@ -174,6 +197,9 @@ def main():
         success, frame = cap.read()
         if not success or (args.frames and frame_idx >= args.frames):
             break
+
+        if cam_K is not None:
+            frame = cv2.undistort(frame, cam_K, cam_D)
 
         # 1. Run Pose Model (for players & skeletons)
         pose_results = pose_model.track(frame, persist=True, classes=[0], verbose=False, device=device)
@@ -234,11 +260,14 @@ def main():
     print("STEP 2: Applying Savitzky-Golay smoothing...", flush=True)
     smoothed_data = smooth_tracking_data(tracking_data)
     
-    with open(args.out_json, "w") as f:
-        json.dump(smoothed_data, f, indent=2)
-    print(f"Smoothed JSON saved to {args.out_json}", flush=True)
+    print("STEP 3: Applying Physics & Generating Analytics...", flush=True)
+    final_data = apply_physics_and_events(smoothed_data, H_matrix, fps)
     
-    print("STEP 3: Rendering final smoothed video...", flush=True)
+    with open(args.out_json, "w") as f:
+        json.dump(final_data, f, indent=2)
+    print(f"Final JSON with analytics saved to {args.out_json}", flush=True)
+    
+    print("STEP 4: Rendering final smoothed video...", flush=True)
     cap = cv2.VideoCapture(args.video)
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -251,19 +280,29 @@ def main():
                 (5, 11), (6, 12), (5, 6), (5, 7), (6, 8), (7, 9), 
                 (8, 10), (1, 2), (0, 1), (0, 2), (1, 3), (2, 4), (3, 5), (4, 6)]
 
-    max_frames = len(smoothed_data)
+    max_frames = len(final_data["frames"])
     for f_idx in range(max_frames):
         success, frame = cap.read()
         if not success:
             break
             
+        if cam_K is not None:
+            frame = cv2.undistort(frame, cam_K, cam_D)
+            
         # Draw Players
-        for player in smoothed_data[f_idx]["players"]:
+        for player in final_data["frames"][f_idx]["players"]:
             x, y, w, h = player["x"], player["y"], player["width"], player["height"]
             x1, y1 = int(x - w/2), int(y - h/2)
             x2, y2 = int(x + w/2), int(y + h/2)
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(frame, f"ID: {player['id']}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            
+            # Change color if they possess the puck
+            box_color = (0, 0, 255) if player.get("has_puck") else (0, 255, 0)
+            
+            cv2.rectangle(frame, (x1, y1), (x2, y2), box_color, 2)
+            
+            # Write ID and Velocity
+            speed_txt = f"{player.get('velocity_mph', 0)} MPH"
+            cv2.putText(frame, f"ID: {player['id']} | {speed_txt}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, box_color, 2)
             
             if "keypoints" in player:
                 kpts = player["keypoints"]
@@ -284,8 +323,8 @@ def main():
                     cv2.circle(frame, pt_blade, 6, (0, 0, 0), -1)
 
         # Draw Custom Entities (Pucks, Goalies, Refs)
-        if "entities" in smoothed_data[f_idx]:
-            for entity in smoothed_data[f_idx]["entities"]:
+        if "entities" in final_data["frames"][f_idx]:
+            for entity in final_data["frames"][f_idx]["entities"]:
                 x, y, w, h = entity["x"], entity["y"], entity["width"], entity["height"]
                 x1, y1 = int(x - w/2), int(y - h/2)
                 x2, y2 = int(x + w/2), int(y + h/2)
