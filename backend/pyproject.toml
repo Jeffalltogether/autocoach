@@ -10,6 +10,7 @@ dependencies = [
     "ultralytics", # For YOLO detections
     "scipy",
     "huggingface_hub",
+    "lap>=0.5.12",
 ]
 
 [build-system]

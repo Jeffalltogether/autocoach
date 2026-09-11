@@ -96,13 +96,16 @@ def smooth_tracking_data(frames_data):
                 kx = smooth_track(np.interp(full_frames, data["frames"], data["keypoints"][i]["x"]))
                 ky = smooth_track(np.interp(full_frames, data["frames"], data["keypoints"][i]["y"]))
                 kconf = np.interp(full_frames, data["frames"], data["keypoints"][i]["conf"])
-                data["smooth_kpts"][i] = {"x": kx, "y": ky, "conf": kconf}
+    # Extract original entities to preserve them across the rebuild
+    original_entities = {}
+    for f in frames_data:
+        original_entities[f["frame"]] = f.get("entities", [])
                 
     smoothed_frames = []
     max_total_frame = max(f["frame"] for f in frames_data)
     
     for f_idx in range(max_total_frame + 1):
-        frame_obj = {"frame": f_idx, "players": []}
+        frame_obj = {"frame": f_idx, "players": [], "entities": original_entities.get(f_idx, [])}
         for pid, data in players.items():
             if f_idx in data["full_frames"]:
                 idx = np.where(data["full_frames"] == f_idx)[0][0]
