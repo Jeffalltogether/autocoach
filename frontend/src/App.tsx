@@ -20,10 +20,10 @@ function App() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   
-  const [showAllBoundingBoxes, setShowAllBoundingBoxes] = useState(false);
-  const [showPlayerBoundingBox, setShowPlayerBoundingBox] = useState(true);
-  const [showAllPoses, setShowAllPoses] = useState(false);
-  const [showPlayerPose, setShowPlayerPose] = useState(true);
+  const [showAllBoundingBoxes, setShowAllBoundingBoxes] = useState(true);
+  const [showPlayerBoundingBox, setShowPlayerBoundingBox] = useState(false);
+  const [showAllPoses, setShowAllPoses] = useState(true);
+  const [showPlayerPose, setShowPlayerPose] = useState(false);
   const [trackPlayer, setTrackPlayer] = useState(false);
   const [loopPlayer, setLoopPlayer] = useState(false);
   const [showPucks, setShowPucks] = useState(false);
