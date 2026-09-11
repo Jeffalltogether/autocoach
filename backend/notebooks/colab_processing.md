@@ -33,8 +33,8 @@ print(f"✅ Google Drive mounted successfully!")
 This cell will clone your GitHub repository and install the backend dependencies using `uv`.
 ```bash
 %%bash
-# Clone the repository
-git clone https://github.com/Jeffalltogether/autocoach.git
+# Clone the repository (dev branch)
+git clone -b dev https://github.com/Jeffalltogether/autocoach.git
 cd autocoach
 
 # Install uv (fast Python package manager)
@@ -44,6 +44,9 @@ source $HOME/.cargo/env
 # Install backend dependencies
 cd backend
 uv pip install --system -r pyproject.toml
+
+# Download the custom HockeyAI YOLO model weights
+uv run python -c "from huggingface_hub import hf_hub_download; hf_hub_download(repo_id='SimulaMet-HOST/HockeyAI', filename='HockeyAI_model_weight.pt', local_dir='.')"
 ```
 
 ### Cell 3: Process Videos
@@ -76,9 +79,8 @@ else:
             "--out_json", json_path,
             "--out_video", video_out_path
         ]
-
         
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd="/content/autocoach/backend")
         
         if result.returncode == 0:
             print(f"✅ Successfully processed {video}")
