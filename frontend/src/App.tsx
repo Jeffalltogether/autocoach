@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { Toolbar } from './components/Toolbar';
 import { VideoPlayer } from './components/VideoPlayer';
 import { TimelinePlot } from './components/TimelinePlot';
+import { getDirectVideoUrl, getProxyJsonUrl } from './utils/urlParser';
 
 export interface Session { id: string; name: string; videoUrl: string; jsonUrl: string; }
 
@@ -61,21 +62,8 @@ function App() {
         const res = await fetch('/sessions.json');
         const data: any[] = await res.json();
           const mappedData: Session[] = data.map(s => {
-            let videoUrl = s.videoUrl || s.driveVideoUrl || '';
-            let jsonUrl = s.jsonUrl || s.driveJsonUrl || '';
-            
-            // Translate Google Drive video share URL to the Vercel API proxy
-            if (s.driveVideoUrl) {
-              const match = s.driveVideoUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-              if (match) videoUrl = `/api/drive?id=${match[1]}`;
-            }
-            
-            // Translate Google Drive JSON share URL to the Vercel API proxy
-            if (s.driveJsonUrl) {
-              const match = s.driveJsonUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-              if (match) jsonUrl = `/api/drive?id=${match[1]}`;
-            }
-            
+            const videoUrl = s.driveVideoUrl ? getDirectVideoUrl(s.driveVideoUrl) : (s.videoUrl || '');
+            const jsonUrl = s.driveJsonUrl ? getProxyJsonUrl(s.driveJsonUrl) : (s.jsonUrl || '');
             return { ...s, videoUrl, jsonUrl };
           });
           
