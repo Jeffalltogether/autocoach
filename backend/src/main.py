@@ -142,34 +142,22 @@ import sys
 
 def main():
     parser = argparse.ArgumentParser(description="Autocoach Dual-Model Pipeline")
-    parser.add_argument("--video", type=str, default="../data/raw/pro_game.mp4", help="Path to input video")
-    parser.add_argument("--out_json", type=str, default="../data/processed/hockey_tracking_final.json")
-    parser.add_argument("--out_video", type=str, default="../data/processed/hockey_tracking_final.mp4")
+    parser.add_argument("--video", type=str, required=True, help="Path to input video file")
+    parser.add_argument("--out_json", type=str, required=True, help="Path to output JSON file")
     parser.add_argument("--frames", type=int, default=None, help="Max frames to process (for testing)")
     parser.add_argument("--homography", type=str, default=None, help="Path to homography.json")
-    parser.add_argument("--camera_calib", type=str, default=None, help="Path to camera_calibration.json")
-    parser.add_argument("--clean_video", action="store_true", help="Do not draw bounding boxes on the output video (useful for frontend rendering)")
     args = parser.parse_args()
     
     import torch
     from physics import apply_physics_and_events
     import os
     
-    # Load Camera Calibration if provided
-    cam_K, cam_D = None, None
-    if args.camera_calib and os.path.exists(args.camera_calib):
-        with open(args.camera_calib, "r") as f:
-            calib = json.load(f)
-            cam_K = np.array(calib["K"], dtype=np.float32)
-            cam_D = np.array(calib["D"], dtype=np.float32)
-            print(f"Loaded fisheye correction from {args.camera_calib}")
-            
-    # Load Homography if provided
+    # Load Homography (if provided)
     H_matrix = None
     if args.homography and os.path.exists(args.homography):
         with open(args.homography, "r") as f:
-            homog = json.load(f)
-            H_matrix = np.array(homog["homography_matrix"], dtype=np.float32)
+            homog_data = json.load(f)
+            H_matrix = np.array(homog_data["homography_matrix"], dtype=np.float32)
             print(f"Loaded homography matrix from {args.homography}")
     
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -198,9 +186,6 @@ def main():
         success, frame = cap.read()
         if not success or (args.frames and frame_idx >= args.frames):
             break
-
-        if cam_K is not None:
-            frame = cv2.undistort(frame, cam_K, cam_D)
 
         # 1. Run Pose Model (for players & skeletons)
         pose_results = pose_model.track(frame, persist=True, classes=[0], verbose=False, device=device)
@@ -268,82 +253,7 @@ def main():
         json.dump(final_data, f, indent=2)
     print(f"Final JSON with analytics saved to {args.out_json}", flush=True)
     
-    print("STEP 4: Rendering final smoothed video...", flush=True)
-    cap = cv2.VideoCapture(args.video)
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps = cap.get(cv2.CAP_PROP_FPS)
-
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(args.out_video, fourcc, fps, (width, height))
-    
-    skeleton = [(15, 13), (13, 11), (16, 14), (14, 12), (11, 12), 
-                (5, 11), (6, 12), (5, 6), (5, 7), (6, 8), (7, 9), 
-                (8, 10), (1, 2), (0, 1), (0, 2), (1, 3), (2, 4), (3, 5), (4, 6)]
-
-    max_frames = len(final_data["frames"])
-    for f_idx in range(max_frames):
-        success, frame = cap.read()
-        if not success:
-            break
-            
-        if cam_K is not None:
-            frame = cv2.undistort(frame, cam_K, cam_D)
-            
-        if not args.clean_video:
-            # Draw Players
-            for player in final_data["frames"][f_idx]["players"]:
-                x, y, w, h = player["x"], player["y"], player["width"], player["height"]
-                x1, y1 = int(x - w/2), int(y - h/2)
-                x2, y2 = int(x + w/2), int(y + h/2)
-                
-                # Change color if they possess the puck
-                box_color = (0, 0, 255) if player.get("has_puck") else (0, 255, 0)
-                
-                cv2.rectangle(frame, (x1, y1), (x2, y2), box_color, 2)
-                
-                # Write ID and Velocity
-                speed_txt = f"{player.get('velocity_mph', 0)} MPH"
-                cv2.putText(frame, f"ID: {player['id']} | {speed_txt}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, box_color, 2)
-                
-                if "keypoints" in player:
-                    kpts = player["keypoints"]
-                    for (i, j) in skeleton:
-                        if i < len(kpts) and j < len(kpts):
-                            pt1 = kpts[i]
-                            pt2 = kpts[j]
-                            if pt1["conf"] > 0.1 and pt2["conf"] > 0.1:
-                                cv2.line(frame, (int(pt1["x"]), int(pt1["y"])), 
-                                         (int(pt2["x"]), int(pt2["y"])), (255, 0, 0), 2)
-
-                    # Draw Stick Inference (Optional visualization)
-                    if "stick_vector" in player:
-                        bx = int(player["x"] + player["stick_vector"]["dx"])
-                        by = int(player["y"] + player["stick_vector"]["dy"])
-                        cv2.line(frame, (int(player["x"]), int(player["y"])), (bx, by), (0, 0, 0), 3)
-                        
-            # Draw Custom Entities (Pucks, Goalies, Refs)
-            if "entities" in final_data["frames"][f_idx]:
-                for entity in final_data["frames"][f_idx]["entities"]:
-                    x, y, w, h = entity["x"], entity["y"], entity["width"], entity["height"]
-                    x1, y1 = int(x - w/2), int(y - h/2)
-                    x2, y2 = int(x + w/2), int(y + h/2)
-                    
-                    color = (255, 255, 255)
-                    if "puck" in entity["type"]: color = (0, 255, 255) # Yellow for puck
-                    elif "goalie" in entity["type"]: color = (255, 0, 255)
-                    elif "ref" in entity["type"]: color = (0, 165, 255)
-                    
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
-                    cv2.putText(frame, entity["type"], (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
-
-        out.write(frame)
-        if f_idx % 30 == 0:
-            print(f"Rendered {f_idx} frames...", flush=True)
-
-    cap.release()
-    out.release()
-    print("Pipeline complete!", flush=True)
+    print("Pipeline complete! (Video rendering skipped for performance)", flush=True)
 
 if __name__ == "__main__":
     main()

@@ -17,9 +17,9 @@ def main():
     updated = False
     
     for file in os.listdir(PROCESSED_DIR):
-        if file.endswith("_processed.mp4"):
-            base_name = file.replace("_processed.mp4", "")
-            video_url = f"/data/processed/{base_name}_processed.mp4"
+        if file.endswith("_tracking.json"):
+            base_name = file.replace("_tracking.json", "")
+            video_url = f"/data/raw/{base_name}.mp4"
             json_url = f"/data/processed/{base_name}_tracking.json"
             
             if video_url not in existing_videos:

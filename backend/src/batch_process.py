@@ -18,10 +18,9 @@ for video in videos:
     video_path = os.path.join(INPUT_DIR, video)
     
     out_json = os.path.join(OUTPUT_DIR, f"{base_name}_tracking.json")
-    out_video = os.path.join(OUTPUT_DIR, f"{base_name}_processed.mp4")
     
     # Check if this video has already been processed
-    if os.path.exists(out_json) and os.path.exists(out_video):
+    if os.path.exists(out_json):
         print(f"⏭️ Skipping '{video}' - Already processed!")
         continue
         
@@ -29,19 +28,11 @@ for video in videos:
     cmd = [
         "python", "/content/main.py", 
         "--video", video_path, 
-        "--out_json", out_json, 
-        "--out_video", out_video,
-        "--clean_video"
+        "--out_json", out_json
     ]
     
-    # Pass calibration and homography if they exist in the output directory
-    camera_calib_path = os.path.join(OUTPUT_DIR, f"{base_name}_camera_calib.json")
+    # Pass homography if it exists in the output directory
     homography_path = os.path.join(OUTPUT_DIR, f"{base_name}_homography.json")
-    
-    if os.path.exists(camera_calib_path):
-        cmd.extend(["--camera_calib", camera_calib_path])
-        print("   -> Attached Camera Calibration (Fisheye Fix)")
-        
     if os.path.exists(homography_path):
         cmd.extend(["--homography", homography_path])
         print("   -> Attached Homography (Physics / MPH)")
