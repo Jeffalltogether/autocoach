@@ -28,7 +28,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   fps
 }) => {
   return (
-    <div className="w-64 bg-slate-800 text-slate-100 flex flex-col h-full border-r border-slate-700">
+    <div className="w-full md:w-64 md:h-full h-48 md:max-h-none bg-slate-800 text-slate-100 flex flex-col md:flex-col overflow-hidden border-b md:border-r border-slate-700 shrink-0">
       <div className="p-4 border-b border-slate-700">
         <h2 className="text-xl font-bold mb-4 text-blue-400">AutoCoach</h2>
         <h3 className="text-sm uppercase tracking-wider text-slate-400 font-semibold mb-2">Sessions</h3>

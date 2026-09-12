@@ -20,7 +20,13 @@ export default async function handler(req: Request) {
       fetchHeaders.set('range', range);
     }
 
-    const response = await fetch(url, { headers: fetchHeaders });
+    let response = await fetch(url, { headers: fetchHeaders, redirect: 'manual' });
+    
+    // Manually follow redirects to preserve the Range header across domains
+    if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
+      const redirectUrl = response.headers.get('location')!;
+      response = await fetch(redirectUrl, { headers: fetchHeaders });
+    }
     
     // Create new headers based on the response
     const headers = new Headers(response.headers);

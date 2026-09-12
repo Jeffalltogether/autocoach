@@ -95,8 +95,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   return (
-    <div className="h-20 bg-slate-900 border-t border-slate-700 flex items-center px-6 justify-between text-slate-200 shrink-0">
-      <div className="flex items-center gap-2 shrink-0">
+    <div className="min-h-20 bg-slate-900 border-t border-slate-700 flex flex-wrap items-center px-4 py-2 gap-y-4 justify-between text-slate-200 shrink-0">
+      <div className="flex flex-wrap items-center gap-2 shrink-0">
         <button 
           onClick={onSeekToStart}
           title="Go to start of player's sequence"
