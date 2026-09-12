@@ -13,7 +13,7 @@ def main():
         with open(SESSIONS_JSON, 'r') as f:
             sessions = json.load(f)
             
-    existing_videos = {s.get("videoUrl") for s in sessions}
+    existing_ids = {s.get("id") for s in sessions}
     updated = False
     
     for file in os.listdir(PROCESSED_DIR):
@@ -22,7 +22,7 @@ def main():
             video_url = f"/data/raw/{base_name}.mp4"
             json_url = f"/data/processed/{base_name}_tracking.json"
             
-            if video_url not in existing_videos:
+            if base_name not in existing_ids:
                 # Need to add new entry
                 new_session = {
                     "id": base_name,
