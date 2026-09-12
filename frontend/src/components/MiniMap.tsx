@@ -24,8 +24,18 @@ export const MiniMap: React.FC<MiniMapProps> = ({
       if (videoRef.current && trackingData.length > 0) {
         const time = videoRef.current.currentTime;
         const frameIndex = Math.floor(time * fps);
-        const frameData = trackingData.find(d => d.frame === frameIndex) || trackingData[0];
-        setCurrentFrameData(frameData);
+        
+        // Fast O(1) lookup since the array is ordered by frame
+        let frameData = trackingData[frameIndex];
+        
+        // Fallback search if the video time exceeds the array or frames are dropped
+        if (!frameData || frameData.frame !== frameIndex) {
+            frameData = trackingData.find(d => Math.abs(d.frame - frameIndex) <= 1) || trackingData[0];
+        }
+
+        if (frameData) {
+          setCurrentFrameData(frameData);
+        }
       }
       animationId = requestAnimationFrame(syncFrame);
     };
@@ -113,6 +123,13 @@ export const MiniMap: React.FC<MiniMapProps> = ({
                />
              );
           })}
+          
+          {/* Fallback Warning if no homography/spatial data exists in this frame */}
+          {(currentFrameData?.players.length ?? 0) > 0 && currentFrameData?.players.every(p => p.real_x === undefined) && (
+            <text x="42.5" y="100" textAnchor="middle" fontSize="6" fill="#94a3b8" className="font-mono">
+              NO SPATIAL DATA
+            </text>
+          )}
         </svg>
       </div>
     </div>

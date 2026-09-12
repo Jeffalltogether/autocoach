@@ -13,19 +13,41 @@ interface TimelinePlotProps {
 export const TimelinePlot: React.FC<TimelinePlotProps> = ({ videoRef, trackingData, selectedPlayerId, fps, onSeek }) => {
   const playheadRef = useRef<HTMLDivElement>(null);
   const plotPoints: { x: number, y: number, time: number }[] = [];
+  const possessionSpans: { startFrame: number, endFrame: number }[] = [];
   
   if (selectedPlayerId && trackingData.length > 0) {
     let lastX = 0;
+    let isPossessing = false;
+    let possessStart = 0;
+
     trackingData.forEach((frame, idx) => {
       const p = frame.players.find(pl => pl.id === selectedPlayerId);
       if (p) {
-        if (idx > 0) {
+        // Chart Velocity
+        if (p.velocity_mph !== undefined) {
+          // Cap at 30 MPH for charting, scale to 0-100%
+          plotPoints.push({ x: frame.frame, y: Math.min(100, (p.velocity_mph / 30) * 100), time: frame.frame / fps });
+        } else if (idx > 0) {
+          // Fallback to pixel velocity
           const velocity = Math.abs(p.x - lastX);
           plotPoints.push({ x: frame.frame, y: Math.min(100, velocity * 2), time: frame.frame / fps });
         }
         lastX = p.x;
+
+        // Chart Possession
+        if (p.has_puck && !isPossessing) {
+          isPossessing = true;
+          possessStart = frame.frame;
+        } else if (!p.has_puck && isPossessing) {
+          isPossessing = false;
+          possessionSpans.push({ startFrame: possessStart, endFrame: frame.frame });
+        }
       }
     });
+
+    if (isPossessing) {
+      possessionSpans.push({ startFrame: possessStart, endFrame: trackingData[trackingData.length - 1].frame });
+    }
   }
 
   const maxFrame = trackingData.length > 0 ? trackingData[trackingData.length - 1].frame : 100;
@@ -83,6 +105,23 @@ export const TimelinePlot: React.FC<TimelinePlotProps> = ({ videoRef, trackingDa
       >
         {plotPoints.length > 0 ? (
           <svg className="absolute inset-0 w-full h-full preserve-3d opacity-50" preserveAspectRatio="none" viewBox="0 0 100 100">
+            {/* Draw Possession Spans as background blocks */}
+            {possessionSpans.map((span, idx) => {
+              const startX = (span.startFrame / maxFrame) * 100;
+              const width = ((span.endFrame - span.startFrame) / maxFrame) * 100;
+              return (
+                <rect 
+                  key={`possess-${idx}`}
+                  x={startX} 
+                  y="0" 
+                  width={Math.max(0.5, width)} 
+                  height="100" 
+                  fill="rgba(250, 204, 21, 0.3)" // Yellow overlay for puck possession
+                />
+              );
+            })}
+            
+            {/* Draw Velocity Line */}
             <path d={pathD} fill="rgba(59, 130, 246, 0.2)" stroke="#3b82f6" strokeWidth="1" vectorEffect="non-scaling-stroke" />
           </svg>
         ) : (
