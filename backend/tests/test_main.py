@@ -1,6 +1,7 @@
-import pytest
 import numpy as np
-from src.main import smooth_track, infer_stick_vector
+
+from src.main import infer_stick_vector, smooth_track
+
 
 def test_smooth_track_basic():
     """Test that smoothing works on a basic array."""

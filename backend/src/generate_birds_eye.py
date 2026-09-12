@@ -1,8 +1,10 @@
+import argparse
+import json
+import os
+
 import cv2
 import numpy as np
-import json
-import argparse
-import os
+
 
 def main():
     parser = argparse.ArgumentParser(description="Generate a Top-Down Birds-Eye Video")

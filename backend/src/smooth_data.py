@@ -1,8 +1,9 @@
 import json
-import numpy as np
+
 import cv2
+import numpy as np
 from scipy.signal import savgol_filter
-from pathlib import Path
+
 
 def smooth_track(data_array, window_length=15, polyorder=3):
     """Applies Savitzky-Golay filter to a 1D numpy array."""

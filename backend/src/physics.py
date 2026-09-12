@@ -1,5 +1,6 @@
-import numpy as np
 import cv2
+import numpy as np
+
 
 def calculate_distance(pt1, pt2):
     return np.sqrt((pt2[0] - pt1[0])**2 + (pt2[1] - pt1[1])**2)
@@ -86,7 +87,6 @@ def apply_physics_and_events(frames_data, homography_matrix, fps):
             if homography_matrix is not None and len(real_pucks) > 0:
                 for puck in real_pucks:
                     # If we inferred stick blade, use it. Otherwise, use skates.
-                    stick_blade = None
                     if "keypoints" in p:
                         # (We could hook up the infer_stick_vector here if we ported it, 
                         # but for now we'll just check distance to the player's general vicinity)
@@ -102,8 +102,7 @@ def apply_physics_and_events(frames_data, homography_matrix, fps):
                         break
                         
         # --- 3. Timeline Event Generation (Possession Changes) ---
-        if homography_matrix is not None:
-            if frame_possessor != current_possessor and frame_possessor is not None:
+        if homography_matrix is not None and frame_possessor != current_possessor and frame_possessor is not None:
                 timeline_events.append({
                     "type": "possession_gained",
                     "frame": f_idx,

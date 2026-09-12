@@ -1,8 +1,10 @@
+import argparse
+import json
+import os
+
 import cv2
 import numpy as np
-import json
-import argparse
-import os
+
 
 def nothing(x):
     pass
@@ -55,7 +57,7 @@ def main():
         k2_val = (cv2.getTrackbarPos("k2 (Edge Curvature)", window_name) - 1000) / 1000.0
         zoom_val = cv2.getTrackbarPos("Zoom / Scale", window_name) / 100.0
         
-        if zoom_val <= 0.1: zoom_val = 0.1
+        zoom_val = max(0.1, zoom_val)
 
         # Intrinsic Camera Matrix (K)
         # Using a guessed focal length based on video width and zoom

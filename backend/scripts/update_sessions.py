@@ -1,6 +1,6 @@
-import os
 import json
-from datetime import datetime
+import os
+from datetime import datetime, timezone
 
 # Paths
 PROCESSED_DIR = "/Users/jeff/Library/CloudStorage/OneDrive-Personal/git/autocoach/data/processed"
@@ -27,7 +27,7 @@ def main():
                 new_session = {
                     "id": base_name,
                     "name": base_name.replace("_", " ").title(),
-                    "date": datetime.now().strftime("%Y-%m-%d"),
+                    "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
                     "videoUrl": video_url,
                     "jsonUrl": json_url
                 }

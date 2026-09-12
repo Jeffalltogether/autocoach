@@ -1,22 +1,21 @@
+import argparse
+import json
+import os
+
 import cv2
 import numpy as np
-import json
-import argparse
-import os
 
 # Global variables to store user clicks
 clicked_points = []
 clone_img = None
 
 def mouse_callback(event, x, y, flags, param):
-    global clicked_points, clone_img
-    if event == cv2.EVENT_LBUTTONDOWN:
-        if len(clicked_points) < 4:
-            clicked_points.append((x, y))
-            cv2.circle(clone_img, (x, y), 5, (0, 255, 0), -1)
-            cv2.putText(clone_img, str(len(clicked_points)), (x+10, y-10), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-            cv2.imshow("Calibration - Click 4 points", clone_img)
+    if event == cv2.EVENT_LBUTTONDOWN and len(clicked_points) < 4:
+        clicked_points.append((x, y))
+        cv2.circle(clone_img, (x, y), 5, (0, 255, 0), -1)
+        cv2.putText(clone_img, str(len(clicked_points)), (x+10, y-10), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+        cv2.imshow("Calibration - Click 4 points", clone_img)
 
 def main():
     parser = argparse.ArgumentParser(description="Interactive Rink Calibration")
@@ -107,7 +106,7 @@ def main():
         [0, args.height]
     ], dtype=np.float32)
     
-    matrix, status = cv2.findHomography(src_pts, dst_pts)
+    matrix, _status = cv2.findHomography(src_pts, dst_pts)
     
     if matrix is None:
         print("Error: Could not compute homography matrix from those points.")

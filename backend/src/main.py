@@ -1,8 +1,10 @@
-import cv2
 import json
+
+import cv2
 import numpy as np
-from ultralytics import YOLO
 from scipy.signal import savgol_filter
+from ultralytics import YOLO
+
 
 def smooth_track(data_array, window_length=5, polyorder=2):
     """Applies Savitzky-Golay filter to a 1D numpy array."""
@@ -138,7 +140,7 @@ def smooth_tracking_data(frames_data):
     return smoothed_frames
 
 import argparse
-import sys
+
 
 def main():
     parser = argparse.ArgumentParser(description="Autocoach Dual-Model Pipeline")
@@ -148,9 +150,11 @@ def main():
     parser.add_argument("--homography", type=str, default=None, help="Path to homography.json")
     args = parser.parse_args()
     
-    import torch
-    from physics import apply_physics_and_events
     import os
+
+    import torch
+
+    from physics import apply_physics_and_events
     
     # Load Homography (if provided)
     H_matrix = None
