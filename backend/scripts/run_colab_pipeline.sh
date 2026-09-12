@@ -17,9 +17,14 @@ else
     echo "✅ Session '$SESSION_NAME' is already running! Skipping provisioning."
 fi
 
-echo "📂 Mounting Google Drive..."
-# Mounts drive. If it's your first time, it might pause here for browser authentication.
-~/.local/bin/colab drivemount -s $SESSION_NAME
+echo "📂 Checking if Google Drive is mounted..."
+# Check if MyDrive exists, if not, trigger the mount
+if ~/.local/bin/colab exec -s $SESSION_NAME <<< 'import os; print("MOUNTED") if os.path.exists("/content/drive/MyDrive") else print("NOT_MOUNTED")' | grep -q "NOT_MOUNTED"; then
+    echo "📂 Mounting Google Drive..."
+    ~/.local/bin/colab drivemount -s $SESSION_NAME
+else
+    echo "✅ Google Drive is already mounted!"
+fi
 
 echo "📦 Installing Dependencies from pyproject.toml..."
 ~/.local/bin/colab install -s $SESSION_NAME -r pyproject.toml
