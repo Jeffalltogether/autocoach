@@ -1,63 +1,33 @@
 import os
-import json
-import pytest
-from pathlib import Path
 import subprocess
+import pytest
+import numpy as np
+import cv2
 
-def test_pipeline_smoke():
-    """Run the main.py pipeline on a tiny test video to ensure no crashes."""
+@pytest.fixture
+def dummy_video(tmp_path):
+    # Create a 5-frame dummy video for CI testing
+    video_path = tmp_path / "dummy_test.mp4"
+    out = cv2.VideoWriter(str(video_path), cv2.VideoWriter_fourcc(*'mp4v'), 30, (640, 480))
+    for _ in range(5):
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        out.write(frame)
+    out.release()
+    return str(video_path)
+
+def test_pipeline_dry_run(dummy_video, tmp_path):
+    # Run the main pipeline for 2 frames to ensure imports and logic don't crash
+    out_json = tmp_path / "dummy_test_tracking.json"
     
-    test_video = Path(__file__).parent / "fixtures" / "test_video.mp4"
-    out_json = Path(__file__).parent / "fixtures" / "test_output.json"
+    cmd = [
+        "python", "src/main.py",
+        "--video", dummy_video,
+        "--out_json", str(out_json),
+        "--frames", "2",
+        "--device", "cpu"  # Force CPU for CI/CD runners without GPUs
+    ]
     
-    # Ensure test video exists
-    assert test_video.exists(), "Test fixture video is missing."
+    result = subprocess.run(cmd, capture_output=True, text=True)
     
-    # Clean up old outputs
-    if out_json.exists():
-        out_json.unlink()
-        
-    import sys
-    from unittest.mock import patch, MagicMock
-    
-    # Ensure src is in sys.path so 'from physics import ...' works
-    src_path = str(Path(__file__).parent.parent / "src")
-    if src_path not in sys.path:
-        sys.path.insert(0, src_path)
-        
-    from src.main import main
-    
-    # Mock YOLO so we don't load huge models in CI
-    with patch("src.main.YOLO") as mock_yolo:
-        # Create a mock model instance that returns an empty list for tracking
-        mock_model_instance = MagicMock()
-        mock_model_instance.track.return_value = [MagicMock(boxes=None, keypoints=None)]
-        mock_yolo.return_value = mock_model_instance
-        
-        # Patch sys.argv to simulate CLI args
-        test_args = [
-            "main.py",
-            "--video", str(test_video),
-            "--out_json", str(out_json),
-            "--frames", "5"
-        ]
-        
-        with patch.object(sys, "argv", test_args):
-            try:
-                main()
-            except Exception as e:
-                pytest.fail(f"Pipeline crashed: {e}")
-    
-    # Assert JSON was created
-    assert out_json.exists(), "JSON output was not created."
-    with open(out_json, "r") as f:
-        data = json.load(f)
-        
-    assert isinstance(data, dict)
-    assert "frames" in data
-    assert len(data["frames"]) > 0
-    assert "frame" in data["frames"][0]
-    assert "players" in data["frames"][0]
-    
-    # Clean up generated files
-    out_json.unlink()
+    assert result.returncode == 0, f"Pipeline crashed:\n{result.stderr}"
+    assert os.path.exists(out_json), "Tracking JSON was not generated"

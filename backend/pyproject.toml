@@ -8,6 +8,7 @@ dependencies = [
     "numpy",
     "pupil-apriltags",
     "ultralytics", # For YOLO detections
+    "sahi", # For Slicing Aided Hyper Inference
     "scipy",
     "huggingface_hub",
     "lap>=0.5.12",

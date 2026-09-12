@@ -187,11 +187,11 @@ def main():
         if not success or (args.frames and frame_idx >= args.frames):
             break
 
-        # 1. Run Pose Model (for players & skeletons)
-        pose_results = pose_model.track(frame, persist=True, classes=[0], verbose=False, device=device)
+        # 1. Run Pose Model (for players & skeletons) at High-Res to catch tiny players in the corners
+        pose_results = pose_model.track(frame, persist=True, classes=[0], verbose=False, device=device, imgsz=2560)
         
         # 2. Run Hockey Model (for pucks, goalies, referees, etc.)
-        hockey_results = hockey_model(frame, verbose=False, device=device)
+        hockey_results = hockey_model(frame, verbose=False, device=device, imgsz=2560)
         
         frame_data = {"frame": frame_idx, "players": [], "entities": []}
         
