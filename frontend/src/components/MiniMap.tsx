@@ -84,9 +84,12 @@ export const MiniMap: React.FC<MiniMapProps> = ({
           {currentFrameData?.players.map(player => {
             if (player.real_x === undefined || player.real_y === undefined) return null;
             
-            // Map the neutral zone coordinates (0-85, 0-50) onto the full rink
-            const mappedX = player.real_x;
-            const mappedY = player.real_y + NEUTRAL_ZONE_OFFSET_Y;
+            // Swap the axes so that the 200ft length maps vertically down the SVG,
+            // and the 85ft width maps horizontally across the SVG.
+            // X is the width (0 to 85).
+            const mappedX = player.real_y;
+            // Y is the length (0 to 200). Neutral zone starts at Left Blue Line (Y=75).
+            const mappedY = player.real_x + NEUTRAL_ZONE_OFFSET_Y;
             
             const isSelected = player.id === selectedPlayerId;
             const isPossessing = player.has_puck;
@@ -111,8 +114,8 @@ export const MiniMap: React.FC<MiniMapProps> = ({
           {/* Pucks */}
           {currentFrameData?.entities?.filter(e => e.type === 'puck').map((puck, idx) => {
              if (puck.real_x === undefined || puck.real_y === undefined) return null;
-             const mappedX = puck.real_x;
-             const mappedY = puck.real_y + NEUTRAL_ZONE_OFFSET_Y;
+             const mappedX = puck.real_y;
+             const mappedY = puck.real_x + NEUTRAL_ZONE_OFFSET_Y;
              return (
                <circle 
                  key={`puck-${idx}`}
