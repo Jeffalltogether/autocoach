@@ -92,10 +92,10 @@ def smooth_tracking_data(frames_data):
         full_frames = np.arange(min_f, max_f + 1)
         
         data["full_frames"] = full_frames
-        data["smooth_x"] = smooth_track(np.interp(full_frames, data["frames"], data["x"]))
-        data["smooth_y"] = smooth_track(np.interp(full_frames, data["frames"], data["y"]))
-        data["smooth_w"] = smooth_track(np.interp(full_frames, data["frames"], data["width"]))
-        data["smooth_h"] = smooth_track(np.interp(full_frames, data["frames"], data["height"]))
+        data["smooth_x"] = np.interp(full_frames, data["frames"], data["x"])
+        data["smooth_y"] = np.interp(full_frames, data["frames"], data["y"])
+        data["smooth_w"] = np.interp(full_frames, data["frames"], data["width"])
+        data["smooth_h"] = np.interp(full_frames, data["frames"], data["height"])
         
         data["smooth_kpts"] = {}
         if len(data["keypoints"][0]["x"]) > 0:
@@ -148,6 +148,7 @@ def main():
     parser.add_argument("--out_json", type=str, required=True, help="Path to output JSON file")
     parser.add_argument("--frames", type=int, default=None, help="Max frames to process (for testing)")
     parser.add_argument("--homography", type=str, default=None, help="Path to homography.json")
+    parser.add_argument("--roi", type=str, default=None, help="Path to ROI polygon JSON")
     args = parser.parse_args()
     
     import os
@@ -156,6 +157,15 @@ def main():
 
     from physics import apply_physics_and_events
     
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+    roi_polygon = None
+    if args.roi and os.path.exists(args.roi):
+        with open(args.roi, 'r') as f:
+            roi_data = json.load(f)
+            roi_polygon = np.array(roi_data["roi_polygon"], dtype=np.int32)
+            print(f"Loaded ROI polygon from {args.roi}")
+
     # Load Homography (if provided)
     H_matrix = None
     if args.homography and os.path.exists(args.homography):
@@ -210,6 +220,14 @@ def main():
             
             for i, (box, track_id) in enumerate(zip(boxes, track_ids)):
                 x, y, w, h = [float(v) for v in box]
+                
+                # Check ROI using the bottom-center of the bounding box (the skates)
+                if roi_polygon is not None:
+                    skates_pt = (int(x), int(y + (h / 2.0)))
+                    # pointPolygonTest returns >= 0 if the point is inside or on the contour
+                    if cv2.pointPolygonTest(roi_polygon, skates_pt, False) < 0:
+                        continue # Skip this player, they are outside the ROI
+                
                 player_dict = {"id": track_id, "role": "player", "x": x, "y": y, "width": w, "height": h}
                 
                 if has_keypoints and i < len(keypoints_batch):
@@ -231,6 +249,13 @@ def main():
             for box, cls, conf in zip(boxes, classes, confs):
                 if conf > 0.3: # Basic confidence threshold
                     x, y, w, h = [float(v) for v in box]
+                    
+                    # Check ROI using bottom-center
+                    if roi_polygon is not None:
+                        pt = (int(x), int(y + (h / 2.0)))
+                        if cv2.pointPolygonTest(roi_polygon, pt, False) < 0:
+                            continue
+                            
                     entity_name = class_names[cls].lower()
                     # We skip standard players since the pose model handles them better,
                     # but we keep pucks, goalies, referees, etc.

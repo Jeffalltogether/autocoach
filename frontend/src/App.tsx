@@ -28,6 +28,7 @@ export interface PlayerTracking {
   real_x?: number;
   real_y?: number;
   has_puck?: boolean;
+  in_contact?: boolean;
   velocity_mph?: number;
   keypoints?: Keypoint[];
   stick_vector?: { dx: number; dy: number };

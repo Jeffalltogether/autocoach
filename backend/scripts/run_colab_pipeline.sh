@@ -68,6 +68,14 @@ for f in ../data/processed/*_homography.json; do
     fi
 done
 
+for f in ../data/processed/*_roi.json; do
+    if [ -f "$f" ]; then
+        filename=$(basename -- "$f")
+        echo "!cp /content/$filename /content/drive/MyDrive/autocoach/processed_data/ || true" | ~/.local/bin/colab exec -s $SESSION_NAME
+        ~/.local/bin/colab upload -s $SESSION_NAME "$f" "/content/drive/MyDrive/autocoach/processed_data/$filename"
+    fi
+done
+
 echo "⚙️ Executing Batch Pipeline..."
 # Run the batch script which automatically skips already processed videos
 echo "!python /content/batch_process.py" | ~/.local/bin/colab exec -s $SESSION_NAME --timeout 7200

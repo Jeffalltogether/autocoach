@@ -14,11 +14,14 @@ export const TimelinePlot: React.FC<TimelinePlotProps> = ({ videoRef, trackingDa
   const playheadRef = useRef<HTMLDivElement>(null);
   const plotPoints: { x: number, y: number, time: number }[] = [];
   const possessionSpans: { startFrame: number, endFrame: number }[] = [];
+  const contactSpans: { startFrame: number, endFrame: number }[] = [];
   
   if (selectedPlayerId && trackingData.length > 0) {
     let lastX = 0;
     let isPossessing = false;
+    let isContact = false;
     let possessStart = 0;
+    let contactStart = 0;
 
     trackingData.forEach((frame, idx) => {
       const p = frame.players.find(pl => pl.id === selectedPlayerId);
@@ -42,11 +45,23 @@ export const TimelinePlot: React.FC<TimelinePlotProps> = ({ videoRef, trackingDa
           isPossessing = false;
           possessionSpans.push({ startFrame: possessStart, endFrame: frame.frame });
         }
+
+        // Chart Contact
+        if (p.in_contact && !isContact) {
+          isContact = true;
+          contactStart = frame.frame;
+        } else if (!p.in_contact && isContact) {
+          isContact = false;
+          contactSpans.push({ startFrame: contactStart, endFrame: frame.frame });
+        }
       }
     });
 
     if (isPossessing) {
       possessionSpans.push({ startFrame: possessStart, endFrame: trackingData[trackingData.length - 1].frame });
+    }
+    if (isContact) {
+      contactSpans.push({ startFrame: contactStart, endFrame: trackingData[trackingData.length - 1].frame });
     }
   }
 
@@ -94,7 +109,7 @@ export const TimelinePlot: React.FC<TimelinePlotProps> = ({ videoRef, trackingDa
         <div className="flex gap-3 text-xs text-slate-400">
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span>Velocity</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span>Contact</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span>Shot</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span>Possession</span>
         </div>
       </div>
       
@@ -105,6 +120,22 @@ export const TimelinePlot: React.FC<TimelinePlotProps> = ({ videoRef, trackingDa
       >
         {plotPoints.length > 0 ? (
           <svg className="absolute inset-0 w-full h-full preserve-3d opacity-50" preserveAspectRatio="none" viewBox="0 0 100 100">
+            {/* Draw Contact Spans as background blocks */}
+            {contactSpans.map((span, idx) => {
+              const startX = (span.startFrame / maxFrame) * 100;
+              const width = ((span.endFrame - span.startFrame) / maxFrame) * 100;
+              return (
+                <rect 
+                  key={`contact-${idx}`}
+                  x={startX} 
+                  y="0" 
+                  width={Math.max(0.5, width)} 
+                  height="100" 
+                  fill="rgba(239, 68, 68, 0.3)" // Red overlay for contact
+                />
+              );
+            })}
+
             {/* Draw Possession Spans as background blocks */}
             {possessionSpans.map((span, idx) => {
               const startX = (span.startFrame / maxFrame) * 100;

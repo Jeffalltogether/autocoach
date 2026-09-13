@@ -101,6 +101,27 @@ def apply_physics_and_events(frames_data, homography_matrix, fps):
                         frame_possessor = pid
                         break
                         
+            # Contact Heuristics
+            p["in_contact"] = False
+            if homography_matrix is not None:
+                for other_p in frame_obj["players"]:
+                    if other_p["id"] != pid:
+                        # Make sure other_p has real_x and real_y calculated already, 
+                        # or just calculate inline to be safe if they haven't been processed yet
+                        ox = other_p.get("real_x")
+                        oy = other_p.get("real_y")
+                        if ox is None or oy is None:
+                            skate_x = other_p["x"]
+                            skate_y = other_p["y"] + (other_p["height"] / 2.0)
+                            pt = np.array([[[skate_x, skate_y]]], dtype=np.float32)
+                            real_pt = cv2.perspectiveTransform(pt, homography_matrix)[0][0]
+                            ox, oy = float(real_pt[0]), float(real_pt[1])
+                            
+                        dist_to_other = calculate_distance((p["real_x"], p["real_y"]), (ox, oy))
+                        if dist_to_other < 3.0: # Within 3 feet
+                            p["in_contact"] = True
+                            break
+                        
         # --- 3. Timeline Event Generation (Possession Changes) ---
         if homography_matrix is not None and frame_possessor != current_possessor and frame_possessor is not None:
                 timeline_events.append({

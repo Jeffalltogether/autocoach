@@ -36,6 +36,12 @@ for video in videos:
     if os.path.exists(homography_path):
         cmd.extend(["--homography", homography_path])
         print("   -> Attached Homography (Physics / MPH)")
+
+    # Pass ROI polygon if it exists
+    roi_path = os.path.join(OUTPUT_DIR, f"{base_name}_roi.json")
+    if os.path.exists(roi_path):
+        cmd.extend(["--roi", roi_path])
+        print("   -> Attached ROI Polygon Mask")
     
     # Run the main.py script for this specific video
     subprocess.run(cmd, check=True)
