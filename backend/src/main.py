@@ -205,10 +205,10 @@ def main():
             break
 
         # 1. Run Tracker Model (for robust tiny bounding boxes)
-        track_results = tracker_model.track(frame, persist=True, classes=[0], verbose=False, device=device, imgsz=2560)
+        track_results = tracker_model.track(frame, persist=True, classes=[0], verbose=False, device=device, imgsz=1920)
         
         # 2. Run Hockey Model (for pucks, goalies, referees, etc.)
-        hockey_results = hockey_model(frame, verbose=False, device=device, imgsz=2560)
+        hockey_results = hockey_model(frame, verbose=False, device=device, imgsz=1920)
         
         frame_data = {"frame": frame_idx, "players": [], "entities": []}
         
@@ -246,24 +246,28 @@ def main():
 
             # Run Pose Model in a single batched inference
             if len(crops) > 0:
-                pose_results = pose_model(crops, verbose=False, device=device)
-                
-                for i, res in enumerate(pose_results):
-                    player_dict = valid_players[i]
-                    offset_x, offset_y = offsets[i]
+                # Add a safe batch size limit to prevent CUDA OOM on massive crowded frames
+                BATCH_SIZE = 32
+                for b_idx in range(0, len(crops), BATCH_SIZE):
+                    batch_crops = crops[b_idx:b_idx+BATCH_SIZE]
+                    pose_results = pose_model(batch_crops, verbose=False, device=device)
                     
-                    if res.keypoints is not None and len(res.keypoints) > 0:
-                        kpts = res.keypoints.data[0].cpu().numpy()
-                        kpts_list = []
-                        for kx, ky, conf in kpts:
-                            # If conf is 0, the model didn't detect the keypoint, leave it at 0,0
-                            if conf > 0:
-                                kpts_list.append({"x": float(kx) + offset_x, "y": float(ky) + offset_y, "conf": float(conf)})
-                            else:
-                                kpts_list.append({"x": 0.0, "y": 0.0, "conf": 0.0})
-                        player_dict["keypoints"] = kpts_list
-                    
-                    frame_data["players"].append(player_dict)
+                    for i, res in enumerate(pose_results):
+                        global_i = b_idx + i
+                        player_dict = valid_players[global_i]
+                        offset_x, offset_y = offsets[global_i]
+                        
+                        if res.keypoints is not None and len(res.keypoints) > 0:
+                            kpts = res.keypoints.data[0].cpu().numpy()
+                            kpts_list = []
+                            for kx, ky, conf in kpts:
+                                if conf > 0:
+                                    kpts_list.append({"x": float(kx) + offset_x, "y": float(ky) + offset_y, "conf": float(conf)})
+                                else:
+                                    kpts_list.append({"x": 0.0, "y": 0.0, "conf": 0.0})
+                            player_dict["keypoints"] = kpts_list
+                        
+                        frame_data["players"].append(player_dict)
                 
         # Extract Custom Entities (Hockey Model)
         if hockey_results[0].boxes is not None:
@@ -283,8 +287,6 @@ def main():
                             continue
                             
                     entity_name = class_names[cls].lower()
-                    # We skip standard players since the pose model handles them better,
-                    # but we keep pucks, goalies, referees, etc.
                     if "player" not in entity_name:
                         frame_data["entities"].append({
                             "type": entity_name,
@@ -293,7 +295,9 @@ def main():
         
         tracking_data.append(frame_data)
         frame_idx += 1
-        if frame_idx % 30 == 0:
+        
+        # Print frequently to keep Colab CLI WebSocket alive (prevents TimeoutError)
+        if frame_idx % 5 == 0:
             print(f"Extracted {frame_idx} frames...", flush=True)
 
     cap.release()
