@@ -180,9 +180,12 @@ def main():
     # Point both models to the persistent Google Drive folder on Colab to prevent re-downloading
     drive_model_dir = "/content/drive/MyDrive/autocoach/models"
     
+    tracker_path = f"{drive_model_dir}/yolov8x.pt" if device == 'cuda' else "yolov8n.pt"
     pose_path = f"{drive_model_dir}/yolov8n-pose.pt" if device == 'cuda' else "yolov8n-pose.pt"
     hockey_path = f"{drive_model_dir}/HockeyAI_model_weight.pt" if device == 'cuda' else "HockeyAI_model_weight.pt"
     
+    # Top-Down Architecture: Tracker finds boxes, Pose finds skeletons inside boxes
+    tracker_model = YOLO(tracker_path)
     pose_model = YOLO(pose_path) 
     hockey_model = YOLO(hockey_path)
     
@@ -201,43 +204,66 @@ def main():
         if not success or (args.frames and frame_idx >= args.frames):
             break
 
-        # 1. Run Pose Model (for players & skeletons) at High-Res to catch tiny players in the corners
-        pose_results = pose_model.track(frame, persist=True, classes=[0], verbose=False, device=device, imgsz=2560)
+        # 1. Run Tracker Model (for robust tiny bounding boxes)
+        track_results = tracker_model.track(frame, persist=True, classes=[0], verbose=False, device=device, imgsz=2560)
         
         # 2. Run Hockey Model (for pucks, goalies, referees, etc.)
         hockey_results = hockey_model(frame, verbose=False, device=device, imgsz=2560)
         
         frame_data = {"frame": frame_idx, "players": [], "entities": []}
         
-        # Extract Players (Pose)
-        if pose_results[0].boxes is not None and pose_results[0].boxes.id is not None:
-            boxes = pose_results[0].boxes.xywh.cpu().numpy()
-            track_ids = pose_results[0].boxes.id.int().cpu().tolist()
+        # Extract Players (Top-Down Tracker -> Batched Pose Crops)
+        if track_results[0].boxes is not None and track_results[0].boxes.id is not None:
+            # We need xyxy for cropping and xywh for saving
+            boxes_xyxy = track_results[0].boxes.xyxy.cpu().numpy()
+            boxes_xywh = track_results[0].boxes.xywh.cpu().numpy()
+            track_ids = track_results[0].boxes.id.int().cpu().tolist()
             
-            has_keypoints = pose_results[0].keypoints is not None
-            if has_keypoints:
-                keypoints_batch = pose_results[0].keypoints.data.cpu().numpy()
+            # Filter by ROI and collect valid crops
+            valid_players = []
+            crops = []
+            offsets = []
             
-            for i, (box, track_id) in enumerate(zip(boxes, track_ids)):
-                x, y, w, h = [float(v) for v in box]
+            for box_xyxy, box_xywh, track_id in zip(boxes_xyxy, boxes_xywh, track_ids):
+                x, y, w, h = [float(v) for v in box_xywh]
                 
                 # Check ROI using the bottom-center of the bounding box (the skates)
                 if roi_polygon is not None:
                     skates_pt = (int(x), int(y + (h / 2.0)))
-                    # pointPolygonTest returns >= 0 if the point is inside or on the contour
                     if cv2.pointPolygonTest(roi_polygon, skates_pt, False) < 0:
                         continue # Skip this player, they are outside the ROI
+                        
+                # Define crop boundaries (with a 10px margin)
+                x1, y1, x2, y2 = [int(v) for v in box_xyxy]
+                cy1, cy2 = max(0, y1-10), min(frame.shape[0], y2+10)
+                cx1, cx2 = max(0, x1-10), min(frame.shape[1], x2+10)
                 
-                player_dict = {"id": track_id, "role": "player", "x": x, "y": y, "width": w, "height": h}
-                
-                if has_keypoints and i < len(keypoints_batch):
-                    kpts_list = []
-                    for kpt in keypoints_batch[i]:
-                        kx, ky, conf = [float(v) for v in kpt]
-                        kpts_list.append({"x": kx, "y": ky, "conf": conf})
-                    player_dict["keypoints"] = kpts_list
+                crop = frame[cy1:cy2, cx1:cx2]
+                if crop.size > 0:
+                    crops.append(crop)
+                    offsets.append((cx1, cy1))
+                    valid_players.append({"id": track_id, "role": "player", "x": x, "y": y, "width": w, "height": h})
 
-                frame_data["players"].append(player_dict)
+            # Run Pose Model in a single batched inference
+            if len(crops) > 0:
+                pose_results = pose_model(crops, verbose=False, device=device)
+                
+                for i, res in enumerate(pose_results):
+                    player_dict = valid_players[i]
+                    offset_x, offset_y = offsets[i]
+                    
+                    if res.keypoints is not None and len(res.keypoints) > 0:
+                        kpts = res.keypoints.data[0].cpu().numpy()
+                        kpts_list = []
+                        for kx, ky, conf in kpts:
+                            # If conf is 0, the model didn't detect the keypoint, leave it at 0,0
+                            if conf > 0:
+                                kpts_list.append({"x": float(kx) + offset_x, "y": float(ky) + offset_y, "conf": float(conf)})
+                            else:
+                                kpts_list.append({"x": 0.0, "y": 0.0, "conf": 0.0})
+                        player_dict["keypoints"] = kpts_list
+                    
+                    frame_data["players"].append(player_dict)
                 
         # Extract Custom Entities (Hockey Model)
         if hockey_results[0].boxes is not None:
