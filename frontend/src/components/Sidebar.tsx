@@ -1,6 +1,5 @@
 import type { Session } from '../App';
 import type { Player, FrameData } from '../App';
-import { MiniMap } from './MiniMap';
 import React from 'react';
 import type { RefObject } from 'react';
 
@@ -11,9 +10,6 @@ interface SidebarProps {
   selectedPlayer: Player | null;
   onSelectSession: (s: Session) => void;
   onSelectPlayer: (p: Player) => void;
-  videoRef: RefObject<HTMLVideoElement | null>;
-  trackingData: FrameData[];
-  fps: number;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -22,10 +18,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   selectedSession,
   selectedPlayer,
   onSelectSession,
-  onSelectPlayer,
-  videoRef,
-  trackingData,
-  fps
+  onSelectPlayer
 }) => {
   return (
     <div className="w-full md:w-64 md:h-full h-48 md:max-h-none bg-slate-800 text-slate-100 flex flex-col md:flex-col overflow-hidden border-b md:border-r border-slate-700 shrink-0">
@@ -74,12 +67,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
-      <MiniMap 
-        videoRef={videoRef}
-        trackingData={trackingData}
-        fps={fps}
-        selectedPlayerId={selectedPlayer?.id}
-      />
     </div>
   );
 };

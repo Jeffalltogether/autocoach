@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { Toolbar } from './components/Toolbar';
 import { VideoPlayer } from './components/VideoPlayer';
 import { TimelinePlot } from './components/TimelinePlot';
+import { MiniMap } from './components/MiniMap';
 import { getDirectVideoUrl, getProxyJsonUrl } from './utils/urlParser';
 
 export interface Session { id: string; name: string; videoUrl: string; jsonUrl: string; }
@@ -138,9 +139,6 @@ function App() {
         selectedPlayer={selectedPlayer}
         onSelectSession={setSelectedSession}
         onSelectPlayer={(p) => handleSelectPlayer(p)}
-        videoRef={videoRef}
-        trackingData={trackingData}
-        fps={fps}
       />
       
       <div className="flex-1 flex flex-col min-w-0">
@@ -171,6 +169,13 @@ function App() {
           onSeek={(time) => {
             if (videoRef.current) videoRef.current.currentTime = time;
           }}
+        />
+        
+        <MiniMap 
+          videoRef={videoRef}
+          trackingData={trackingData}
+          fps={fps}
+          selectedPlayerId={selectedPlayer?.id}
         />
         
         <Toolbar 
