@@ -180,7 +180,7 @@ def main():
     # Point both models to the persistent Google Drive folder on Colab to prevent re-downloading
     drive_model_dir = "/content/drive/MyDrive/autocoach/models"
     
-    tracker_path = f"{drive_model_dir}/yolov8x.pt" if device == 'cuda' else "yolov8n.pt"
+    tracker_path = f"{drive_model_dir}/yolov8n.pt" if device == 'cuda' else "yolov8n.pt"
     pose_path = f"{drive_model_dir}/yolov8n-pose.pt" if device == 'cuda' else "yolov8n-pose.pt"
     hockey_path = f"{drive_model_dir}/HockeyAI_model_weight.pt" if device == 'cuda' else "HockeyAI_model_weight.pt"
     
