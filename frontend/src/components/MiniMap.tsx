@@ -50,11 +50,11 @@ export const MiniMap: React.FC<MiniMapProps> = ({
   const NEUTRAL_ZONE_OFFSET_X = 75;
 
   return (
-    <div className="p-4 border-t border-slate-700 bg-slate-800 flex flex-col items-center">
-      <h3 className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-3 w-full">Live Tracker</h3>
+    <div className="p-2 pb-4 border-t border-slate-700 bg-slate-800 flex flex-col items-center">
+      <h3 className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-2 w-full">Live Tracker</h3>
       <div 
-        className="relative bg-white rounded-3xl overflow-hidden shadow-inner"
-        style={{ width: '100%', maxWidth: '600px', height: '180px' }} // Adjusted styling for horizontal view
+        className="relative bg-white rounded-2xl overflow-hidden shadow-inner"
+        style={{ width: '100%', maxWidth: '500px', height: '140px' }} // Adjusted styling for tighter horizontal view
       >
         <svg 
           viewBox={`0 0 ${RINK_WIDTH} ${RINK_HEIGHT}`} 

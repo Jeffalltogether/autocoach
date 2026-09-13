@@ -162,22 +162,24 @@ function App() {
           fps={fps}
         />
         
-        <TimelinePlot 
-          videoRef={videoRef}
-          trackingData={trackingData} 
-          selectedPlayerId={selectedPlayer?.id}
-          fps={fps}
-          onSeek={(time) => {
-            if (videoRef.current) videoRef.current.currentTime = time;
-          }}
-        />
-        
-        <MiniMap 
-          videoRef={videoRef}
-          trackingData={trackingData}
-          fps={fps}
-          selectedPlayerId={selectedPlayer?.id}
-        />
+        <div className="max-h-56 overflow-y-auto shrink-0 flex flex-col border-t border-slate-700 custom-scrollbar bg-slate-900">
+          <TimelinePlot 
+            videoRef={videoRef}
+            trackingData={trackingData} 
+            selectedPlayerId={selectedPlayer?.id}
+            fps={fps}
+            onSeek={(time) => {
+              if (videoRef.current) videoRef.current.currentTime = time;
+            }}
+          />
+          
+          <MiniMap 
+            videoRef={videoRef}
+            trackingData={trackingData}
+            fps={fps}
+            selectedPlayerId={selectedPlayer?.id}
+          />
+        </div>
         
         <Toolbar 
           videoRef={videoRef}
