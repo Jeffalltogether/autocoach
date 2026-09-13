@@ -31,14 +31,17 @@ for video in videos:
         "--out_json", out_json
     ]
     
-    # Pass homography if it exists in the output directory
-    homography_path = os.path.join(OUTPUT_DIR, f"{base_name}_homography.json")
+    # Set up calibration path
+    CALIBRATION_DIR = "/content/drive/MyDrive/autocoach/calibration"
+    
+    # Pass homography if it exists in the calibration directory
+    homography_path = os.path.join(CALIBRATION_DIR, f"{base_name}_homography.json")
     if os.path.exists(homography_path):
         cmd.extend(["--homography", homography_path])
         print("   -> Attached Homography (Physics / MPH)")
 
     # Pass ROI polygon if it exists
-    roi_path = os.path.join(OUTPUT_DIR, f"{base_name}_roi.json")
+    roi_path = os.path.join(CALIBRATION_DIR, f"{base_name}_roi.json")
     if os.path.exists(roi_path):
         cmd.extend(["--roi", roi_path])
         print("   -> Attached ROI Polygon Mask")

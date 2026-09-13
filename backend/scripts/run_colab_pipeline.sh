@@ -50,29 +50,28 @@ echo "⚙️ Uploading backend code to Colab..."
 ~/.local/bin/colab upload -s $SESSION_NAME src/physics.py /content/physics.py
 ~/.local/bin/colab upload -s $SESSION_NAME src/batch_process.py /content/batch_process.py
 
+echo "⚙️ Creating Colab Calibration Directory..."
+echo "!mkdir -p /content/drive/MyDrive/autocoach/calibration" | ~/.local/bin/colab exec -s $SESSION_NAME
+
 echo "⚙️ Uploading Calibration profiles to Google Drive..."
-# We upload these directly to the processed folder so batch_process.py can find them
-for f in ../data/processed/*_camera_calib.json; do
+for f in ../data/calibration/*_camera_calib.json; do
     if [ -f "$f" ]; then
         filename=$(basename -- "$f")
-        echo "!cp /content/$filename /content/drive/MyDrive/autocoach/processed_data/ || true" | ~/.local/bin/colab exec -s $SESSION_NAME
-        ~/.local/bin/colab upload -s $SESSION_NAME "$f" "/content/drive/MyDrive/autocoach/processed_data/$filename"
+        ~/.local/bin/colab upload -s $SESSION_NAME "$f" "/content/drive/MyDrive/autocoach/calibration/$filename"
     fi
 done
 
-for f in ../data/processed/*_homography.json; do
+for f in ../data/calibration/*_homography.json; do
     if [ -f "$f" ]; then
         filename=$(basename -- "$f")
-        echo "!cp /content/$filename /content/drive/MyDrive/autocoach/processed_data/ || true" | ~/.local/bin/colab exec -s $SESSION_NAME
-        ~/.local/bin/colab upload -s $SESSION_NAME "$f" "/content/drive/MyDrive/autocoach/processed_data/$filename"
+        ~/.local/bin/colab upload -s $SESSION_NAME "$f" "/content/drive/MyDrive/autocoach/calibration/$filename"
     fi
 done
 
-for f in ../data/processed/*_roi.json; do
+for f in ../data/calibration/*_roi.json; do
     if [ -f "$f" ]; then
         filename=$(basename -- "$f")
-        echo "!cp /content/$filename /content/drive/MyDrive/autocoach/processed_data/ || true" | ~/.local/bin/colab exec -s $SESSION_NAME
-        ~/.local/bin/colab upload -s $SESSION_NAME "$f" "/content/drive/MyDrive/autocoach/processed_data/$filename"
+        ~/.local/bin/colab upload -s $SESSION_NAME "$f" "/content/drive/MyDrive/autocoach/calibration/$filename"
     fi
 done
 
