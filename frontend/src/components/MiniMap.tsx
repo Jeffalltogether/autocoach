@@ -53,7 +53,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
     <div className="p-2 pb-4 border-t border-slate-700 bg-slate-800 flex flex-col items-center">
       <h3 className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-2 w-full">Live Tracker</h3>
       <div 
-        className="relative bg-white rounded-2xl overflow-hidden shadow-inner"
+        className="relative flex justify-center items-center"
         style={{ width: '100%', maxWidth: '500px', height: '140px' }} // Adjusted styling for tighter horizontal view
       >
         <svg 
@@ -61,27 +61,54 @@ export const MiniMap: React.FC<MiniMapProps> = ({
           className="w-full h-full pointer-events-none"
           preserveAspectRatio="xMidYMid meet"
         >
+          <defs>
+            <clipPath id="rink-clip">
+              <rect x="0" y="0" width={RINK_WIDTH} height={RINK_HEIGHT} rx="28" ry="28" />
+            </clipPath>
+          </defs>
+
           {/* Ice Surface */}
-          <rect x="0" y="0" width={RINK_WIDTH} height={RINK_HEIGHT} fill="#f8fafc" />
+          <rect x="0" y="0" width={RINK_WIDTH} height={RINK_HEIGHT} rx="28" ry="28" fill="#f8fafc" stroke="#94a3b8" strokeWidth="1" />
           
-          {/* Center Red Line */}
-          <line x1="100" y1="0" x2="100" y2={RINK_HEIGHT} stroke="#ef4444" strokeWidth="1" />
-          {/* Center Circle */}
-          <circle cx="100" cy={RINK_HEIGHT/2} r="15" fill="none" stroke="#ef4444" strokeWidth="0.5" />
-          
-          {/* Blue Lines */}
-          <line x1="75" y1="0" x2="75" y2={RINK_HEIGHT} stroke="#3b82f6" strokeWidth="1" />
-          <line x1="125" y1="0" x2="125" y2={RINK_HEIGHT} stroke="#3b82f6" strokeWidth="1" />
-          
-          {/* Goal Lines */}
-          <line x1="11" y1="11" x2="11" y2="74" stroke="#ef4444" strokeWidth="0.5" />
-          <line x1="189" y1="11" x2="189" y2="74" stroke="#ef4444" strokeWidth="0.5" />
-          
-          {/* Creases */}
-          {/* Left crease at x=11, spanning y=38.5 to 46.5 */}
-          <path d="M 11 38.5 A 4 4 0 0 1 11 46.5" fill="#3b82f6" fillOpacity="0.3" stroke="#ef4444" strokeWidth="0.5" />
-          {/* Right crease at x=189, spanning y=38.5 to 46.5 */}
-          <path d="M 189 38.5 A 4 4 0 0 0 189 46.5" fill="#3b82f6" fillOpacity="0.3" stroke="#ef4444" strokeWidth="0.5" />
+          <g clipPath="url(#rink-clip)">
+            {/* Center Red Line */}
+            <line x1="100" y1="0" x2="100" y2={RINK_HEIGHT} stroke="#ef4444" strokeWidth="1" />
+            {/* Center Circle & Dot */}
+            <circle cx="100" cy={RINK_HEIGHT/2} r="15" fill="none" stroke="#ef4444" strokeWidth="0.5" />
+            <circle cx="100" cy={RINK_HEIGHT/2} r="0.5" fill="#ef4444" />
+            
+            {/* Blue Lines */}
+            <line x1="75" y1="0" x2="75" y2={RINK_HEIGHT} stroke="#3b82f6" strokeWidth="1" />
+            <line x1="125" y1="0" x2="125" y2={RINK_HEIGHT} stroke="#3b82f6" strokeWidth="1" />
+            
+            {/* Goal Lines */}
+            <line x1="11" y1="0" x2="11" y2={RINK_HEIGHT} stroke="#ef4444" strokeWidth="0.5" />
+            <line x1="189" y1="0" x2="189" y2={RINK_HEIGHT} stroke="#ef4444" strokeWidth="0.5" />
+            
+            {/* Creases */}
+            {/* Left crease at x=11, spanning y=38.5 to 46.5 */}
+            <path d="M 11 38.5 A 4 4 0 0 1 11 46.5" fill="#3b82f6" fillOpacity="0.3" stroke="#ef4444" strokeWidth="0.5" />
+            {/* Right crease at x=189, spanning y=38.5 to 46.5 */}
+            <path d="M 189 38.5 A 4 4 0 0 0 189 46.5" fill="#3b82f6" fillOpacity="0.3" stroke="#ef4444" strokeWidth="0.5" />
+
+            {/* End Zone Faceoff Circles */}
+            <circle cx="31" cy="20.5" r="15" fill="none" stroke="#ef4444" strokeWidth="0.5" />
+            <circle cx="31" cy="64.5" r="15" fill="none" stroke="#ef4444" strokeWidth="0.5" />
+            <circle cx="169" cy="20.5" r="15" fill="none" stroke="#ef4444" strokeWidth="0.5" />
+            <circle cx="169" cy="64.5" r="15" fill="none" stroke="#ef4444" strokeWidth="0.5" />
+
+            {/* End Zone Faceoff Dots */}
+            <circle cx="31" cy="20.5" r="1" fill="#ef4444" />
+            <circle cx="31" cy="64.5" r="1" fill="#ef4444" />
+            <circle cx="169" cy="20.5" r="1" fill="#ef4444" />
+            <circle cx="169" cy="64.5" r="1" fill="#ef4444" />
+
+            {/* Neutral Zone Faceoff Dots */}
+            <circle cx="80" cy="20.5" r="1" fill="#ef4444" />
+            <circle cx="80" cy="64.5" r="1" fill="#ef4444" />
+            <circle cx="120" cy="20.5" r="1" fill="#ef4444" />
+            <circle cx="120" cy="64.5" r="1" fill="#ef4444" />
+          </g>
           
           {/* Dots representing players */}
           {currentFrameData?.players.map(player => {
