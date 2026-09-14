@@ -242,6 +242,13 @@ def main():
                 
                 for b, t_id, conf in zip(boxes, ids, confs):
                     gx1, gy1, gx2, gy2 = b[0] + z["x1"], b[1], b[2] + z["x1"], b[3]
+                    
+                    # EARLY FILTERING: Check ROI immediately to prevent $O(N^2)$ NMS explosion on crowded stands
+                    if roi_polygon is not None:
+                        skates_pt = (int((gx1 + gx2) / 2.0), int(gy2)) # Bottom center of the bounding box
+                        if cv2.pointPolygonTest(roi_polygon, skates_pt, False) < 0:
+                            continue # Skip appending this box; it's outside the ROI
+                            
                     local_id = f"{z['name']}_{t_id}"
                     all_boxes.append({
                         "local_id": local_id,
@@ -302,12 +309,6 @@ def main():
         offsets = []
         
         for p in merged_players:
-            # Check ROI using the bottom-center of the bounding box (the skates)
-            if roi_polygon is not None:
-                skates_pt = (int(p["x"]), int(p["y"] + (p["height"] / 2.0)))
-                if cv2.pointPolygonTest(roi_polygon, skates_pt, False) < 0:
-                    continue # Skip this player, they are outside the ROI
-                    
             # Define crop boundaries (with a 10px margin)
             x1, y1, x2, y2 = [int(v) for v in p["xyxy"]]
             cy1, cy2 = max(0, y1-10), min(frame.shape[0], y2+10)
