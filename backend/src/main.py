@@ -177,15 +177,18 @@ def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"Loading YOLO models (Pose + Custom HockeyAI) on device: {device}...", flush=True)
     
-    # Point both models to the persistent Google Drive folder on Colab to prevent re-downloading
     drive_model_dir = "/content/drive/MyDrive/autocoach/models"
     
-    tracker_path = f"{drive_model_dir}/yolov8n.pt" if device == 'cuda' else "yolov8n.pt"
+    # We use 3 independent trackers for the 3 horizontal zones to maintain tracking history per zone
+    tracker_path = f"{drive_model_dir}/yolov8x.pt" if device == 'cuda' else "yolov8n.pt"
+    tracker_L = YOLO(tracker_path)
+    tracker_C = YOLO(tracker_path)
+    tracker_R = YOLO(tracker_path)
+    trackers = {"L": tracker_L, "C": tracker_C, "R": tracker_R}
+    
     pose_path = f"{drive_model_dir}/yolov8n-pose.pt" if device == 'cuda' else "yolov8n-pose.pt"
     hockey_path = f"{drive_model_dir}/HockeyAI_model_weight.pt" if device == 'cuda' else "HockeyAI_model_weight.pt"
     
-    # Top-Down Architecture: Tracker finds boxes, Pose finds skeletons inside boxes
-    tracker_model = YOLO(tracker_path)
     pose_model = YOLO(pose_path) 
     hockey_model = YOLO(hockey_path)
     
@@ -198,51 +201,123 @@ def main():
     tracking_data = []
     frame_idx = 0
     
-    print("STEP 1: Running dual-model tracking extraction...", flush=True)
+    # Global tracking maps for NMS merging
+    local_to_global = {}
+    next_global_id = 1
+    
+    def calculate_iou(boxA, boxB):
+        xA, yA = max(boxA[0], boxB[0]), max(boxA[1], boxB[1])
+        xB, yB = min(boxA[2], boxB[2]), min(boxA[3], boxB[3])
+        interArea = max(0, xB - xA) * max(0, yB - yA)
+        if interArea == 0: return 0.0
+        return interArea / float(((boxA[2]-boxA[0])*(boxA[3]-boxA[1])) + ((boxB[2]-boxB[0])*(boxB[3]-boxB[1])) - interArea)
+    
+    print("STEP 1: Running SAHI Tiled Tracking & Pose extraction...", flush=True)
     while cap.isOpened():
         success, frame = cap.read()
         if not success or (args.frames and frame_idx >= args.frames):
             break
+            
+        H, W = frame.shape[:2]
+        # Dynamically slice the extremely wide panorama into 3 overlapping vertical zones
+        overlap = 300
+        zone_w = W // 3
+        zones = [
+            {"name": "L", "x1": 0, "x2": zone_w + overlap},
+            {"name": "C", "x1": zone_w - overlap, "x2": 2 * zone_w + overlap},
+            {"name": "R", "x1": 2 * zone_w - overlap, "x2": W}
+        ]
 
-        # 1. Run Tracker Model (for robust tiny bounding boxes)
-        track_results = tracker_model.track(frame, persist=True, classes=[0], verbose=False, device=device, imgsz=1920)
+        # 1. Run Tracker Model on each zone independently
+        all_boxes = []
+        for z in zones:
+            crop_zone = frame[:, z["x1"]:z["x2"]]
+            # We process at a lower imgsz (1280) since the width is already cut in third. This is blazingly fast.
+            res = trackers[z["name"]].track(crop_zone, persist=True, classes=[0], verbose=False, device=device, imgsz=1280)
+            
+            if res[0].boxes is not None and res[0].boxes.id is not None:
+                boxes = res[0].boxes.xyxy.cpu().numpy()
+                ids = res[0].boxes.id.int().cpu().tolist()
+                confs = res[0].boxes.conf.cpu().tolist()
+                
+                for b, t_id, conf in zip(boxes, ids, confs):
+                    gx1, gy1, gx2, gy2 = b[0] + z["x1"], b[1], b[2] + z["x1"], b[3]
+                    local_id = f"{z['name']}_{t_id}"
+                    all_boxes.append({
+                        "local_id": local_id,
+                        "box": [gx1, gy1, gx2, gy2],
+                        "conf": conf
+                    })
+                    
+        # 2. NMS Merge Tracked Boxes across zones
+        merged_players = []
+        used = set()
+        all_boxes = sorted(all_boxes, key=lambda x: x["conf"], reverse=True)
         
-        # 2. Run Hockey Model (for pucks, goalies, referees, etc.)
-        hockey_results = hockey_model(frame, verbose=False, device=device, imgsz=1920)
+        for i, boxA in enumerate(all_boxes):
+            if i in used: continue
+            cluster = [boxA]
+            used.add(i)
+            
+            for j in range(i + 1, len(all_boxes)):
+                if j in used: continue
+                if calculate_iou(boxA["box"], all_boxes[j]["box"]) > 0.4:
+                    cluster.append(all_boxes[j])
+                    used.add(j)
+                    
+            assigned_global_id = None
+            for b in cluster:
+                if b["local_id"] in local_to_global:
+                    assigned_global_id = local_to_global[b["local_id"]]
+                    break
+                    
+            if assigned_global_id is None:
+                assigned_global_id = next_global_id
+                next_global_id += 1
+                
+            for b in cluster:
+                local_to_global[b["local_id"]] = assigned_global_id
+                
+            # Average the boxes in the cluster
+            avg_x1 = sum(b["box"][0] for b in cluster) / len(cluster)
+            avg_y1 = sum(b["box"][1] for b in cluster) / len(cluster)
+            avg_x2 = sum(b["box"][2] for b in cluster) / len(cluster)
+            avg_y2 = sum(b["box"][3] for b in cluster) / len(cluster)
+            
+            w, h = avg_x2 - avg_x1, avg_y2 - avg_y1
+            merged_players.append({
+                "id": assigned_global_id, "role": "player",
+                "x": avg_x1, "y": avg_y1, "width": w, "height": h,
+                "xyxy": [avg_x1, avg_y1, avg_x2, avg_y2]
+            })
+
+        # 3. Run Hockey Model (for pucks, goalies, referees, etc.)
+        hockey_results = hockey_model(frame, verbose=False, device=device, imgsz=2560)
         
         frame_data = {"frame": frame_idx, "players": [], "entities": []}
         
-        # Extract Players (Top-Down Tracker -> Batched Pose Crops)
-        if track_results[0].boxes is not None and track_results[0].boxes.id is not None:
-            # We need xyxy for cropping and xywh for saving
-            boxes_xyxy = track_results[0].boxes.xyxy.cpu().numpy()
-            boxes_xywh = track_results[0].boxes.xywh.cpu().numpy()
-            track_ids = track_results[0].boxes.id.int().cpu().tolist()
+        # 4. Filter merged players by ROI and Batched Pose Extraction
+        valid_players = []
+        crops = []
+        offsets = []
+        
+        for p in merged_players:
+            # Check ROI using the bottom-center of the bounding box (the skates)
+            if roi_polygon is not None:
+                skates_pt = (int(p["x"]), int(p["y"] + (p["height"] / 2.0)))
+                if cv2.pointPolygonTest(roi_polygon, skates_pt, False) < 0:
+                    continue # Skip this player, they are outside the ROI
+                    
+            # Define crop boundaries (with a 10px margin)
+            x1, y1, x2, y2 = [int(v) for v in p["xyxy"]]
+            cy1, cy2 = max(0, y1-10), min(frame.shape[0], y2+10)
+            cx1, cx2 = max(0, x1-10), min(frame.shape[1], x2+10)
             
-            # Filter by ROI and collect valid crops
-            valid_players = []
-            crops = []
-            offsets = []
-            
-            for box_xyxy, box_xywh, track_id in zip(boxes_xyxy, boxes_xywh, track_ids):
-                x, y, w, h = [float(v) for v in box_xywh]
-                
-                # Check ROI using the bottom-center of the bounding box (the skates)
-                if roi_polygon is not None:
-                    skates_pt = (int(x), int(y + (h / 2.0)))
-                    if cv2.pointPolygonTest(roi_polygon, skates_pt, False) < 0:
-                        continue # Skip this player, they are outside the ROI
-                        
-                # Define crop boundaries (with a 10px margin)
-                x1, y1, x2, y2 = [int(v) for v in box_xyxy]
-                cy1, cy2 = max(0, y1-10), min(frame.shape[0], y2+10)
-                cx1, cx2 = max(0, x1-10), min(frame.shape[1], x2+10)
-                
-                crop = frame[cy1:cy2, cx1:cx2]
-                if crop.size > 0:
-                    crops.append(crop)
-                    offsets.append((cx1, cy1))
-                    valid_players.append({"id": track_id, "role": "player", "x": x, "y": y, "width": w, "height": h})
+            crop = frame[cy1:cy2, cx1:cx2]
+            if crop.size > 0:
+                crops.append(crop)
+                offsets.append((cx1, cy1))
+                valid_players.append(p)
 
             # Run Pose Model in a single batched inference
             if len(crops) > 0:
