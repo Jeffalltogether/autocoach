@@ -100,9 +100,34 @@ def smooth_tracking_data(frames_data):
         data["smooth_kpts"] = {}
         if len(data["keypoints"][0]["x"]) > 0:
             for i in range(17):
-                kx = smooth_track(np.interp(full_frames, data["frames"], data["keypoints"][i]["x"]))
-                ky = smooth_track(np.interp(full_frames, data["frames"], data["keypoints"][i]["y"]))
-                kconf = np.interp(full_frames, data["frames"], data["keypoints"][i]["conf"])
+                x_arr = np.array(data["keypoints"][i]["x"])
+                y_arr = np.array(data["keypoints"][i]["y"])
+                conf_arr = np.array(data["keypoints"][i]["conf"])
+                
+                valid_mask = conf_arr > 0
+                if np.sum(valid_mask) > 0:
+                    valid_frames = np.array(data["frames"])[valid_mask]
+                    valid_x = x_arr[valid_mask]
+                    valid_y = y_arr[valid_mask]
+                    
+                    # Interpolate positions ONLY using frames where the keypoint was actually detected
+                    kx = np.interp(full_frames, valid_frames, valid_x)
+                    ky = np.interp(full_frames, valid_frames, valid_y)
+                    # Interpolate confidence across all frames so it naturally fades out when missing
+                    kconf = np.interp(full_frames, data["frames"], conf_arr)
+                    
+                    kx = smooth_track(kx)
+                    ky = smooth_track(ky)
+                    
+                    # Force X, Y to exactly 0.0 where confidence is practically 0 to prevent "darting angels" 
+                    # from being drawn returning to the top left of the screen (0,0)
+                    kx[kconf < 0.1] = 0.0
+                    ky[kconf < 0.1] = 0.0
+                else:
+                    kx = np.zeros_like(full_frames, dtype=float)
+                    ky = np.zeros_like(full_frames, dtype=float)
+                    kconf = np.zeros_like(full_frames, dtype=float)
+
                 data["smooth_kpts"][i] = {"x": kx, "y": ky, "conf": kconf}
 
     # Extract original entities to preserve them across the rebuild
@@ -179,12 +204,12 @@ def main():
     
     drive_model_dir = "/content/drive/MyDrive/autocoach/models"
     
-    # We use 3 independent trackers for the 3 horizontal zones to maintain tracking history per zone
+    # We use 6 independent trackers for the 3x2 SAHI grid to maintain tracking history per zone
     tracker_path = f"{drive_model_dir}/yolov8x.pt" if device == 'cuda' else "yolov8n.pt"
-    tracker_L = YOLO(tracker_path)
-    tracker_C = YOLO(tracker_path)
-    tracker_R = YOLO(tracker_path)
-    trackers = {"L": tracker_L, "C": tracker_C, "R": tracker_R}
+    trackers = {
+        "TL": YOLO(tracker_path), "TC": YOLO(tracker_path), "TR": YOLO(tracker_path),
+        "BL": YOLO(tracker_path), "BC": YOLO(tracker_path), "BR": YOLO(tracker_path)
+    }
     
     pose_path = f"{drive_model_dir}/yolov8n-pose.pt" if device == 'cuda' else "yolov8n-pose.pt"
     hockey_path = f"{drive_model_dir}/HockeyAI_model_weight.pt" if device == 'cuda' else "HockeyAI_model_weight.pt"
@@ -219,19 +244,24 @@ def main():
             break
             
         H, W = frame.shape[:2]
-        # Dynamically slice the extremely wide panorama into 3 overlapping vertical zones
-        overlap = 300
+        # Dynamically slice the extremely wide panorama into a 3x2 grid with overlaps
+        overlap_w = 300
+        overlap_h = 200
         zone_w = W // 3
+        zone_h = H // 2
         zones = [
-            {"name": "L", "x1": 0, "x2": zone_w + overlap},
-            {"name": "C", "x1": zone_w - overlap, "x2": 2 * zone_w + overlap},
-            {"name": "R", "x1": 2 * zone_w - overlap, "x2": W}
+            {"name": "TL", "x1": 0, "x2": zone_w + overlap_w, "y1": 0, "y2": zone_h + overlap_h},
+            {"name": "TC", "x1": zone_w - overlap_w, "x2": 2 * zone_w + overlap_w, "y1": 0, "y2": zone_h + overlap_h},
+            {"name": "TR", "x1": 2 * zone_w - overlap_w, "x2": W, "y1": 0, "y2": zone_h + overlap_h},
+            {"name": "BL", "x1": 0, "x2": zone_w + overlap_w, "y1": zone_h - overlap_h, "y2": H},
+            {"name": "BC", "x1": zone_w - overlap_w, "x2": 2 * zone_w + overlap_w, "y1": zone_h - overlap_h, "y2": H},
+            {"name": "BR", "x1": 2 * zone_w - overlap_w, "x2": W, "y1": zone_h - overlap_h, "y2": H}
         ]
 
         # 1. Run Tracker Model on each zone independently
         all_boxes = []
         for z in zones:
-            crop_zone = frame[:, z["x1"]:z["x2"]]
+            crop_zone = frame[z["y1"]:z["y2"], z["x1"]:z["x2"]]
             # We process at a lower imgsz (1280) since the width is already cut in third. This is blazingly fast.
             res = trackers[z["name"]].track(crop_zone, persist=True, classes=[0], verbose=False, device=device, imgsz=1280)
             
@@ -241,7 +271,7 @@ def main():
                 confs = res[0].boxes.conf.cpu().tolist()
                 
                 for b, t_id, conf in zip(boxes, ids, confs):
-                    gx1, gy1, gx2, gy2 = b[0] + z["x1"], b[1], b[2] + z["x1"], b[3]
+                    gx1, gy1, gx2, gy2 = b[0] + z["x1"], b[1] + z["y1"], b[2] + z["x1"], b[3] + z["y1"]
                     
                     # EARLY FILTERING: Check ROI immediately to prevent $O(N^2)$ NMS explosion on crowded stands
                     if roi_polygon is not None:
@@ -292,9 +322,13 @@ def main():
             avg_y2 = sum(b["box"][3] for b in cluster) / len(cluster)
             
             w, h = avg_x2 - avg_x1, avg_y2 - avg_y1
+            # FIX: Convert Top-Left back to Center X, Y for YOLO/Frontend expectations
+            center_x = avg_x1 + w / 2.0
+            center_y = avg_y1 + h / 2.0
+            
             merged_players.append({
                 "id": assigned_global_id, "role": "player",
-                "x": avg_x1, "y": avg_y1, "width": w, "height": h,
+                "x": center_x, "y": center_y, "width": w, "height": h,
                 "xyxy": [avg_x1, avg_y1, avg_x2, avg_y2]
             })
 
