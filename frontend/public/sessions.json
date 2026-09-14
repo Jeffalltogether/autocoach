@@ -1,30 +1,9 @@
 [
   {
-    "id": "hocky_test_video",
-    "name": "Hocky Test Video",
-    "date": "2026-09-12",
-    "videoUrl": "/data/raw/hocky_test_video.mp4",
-    "jsonUrl": "/data/processed/hocky_test_video_tracking.json"
-  },
-  {
-    "id": "static_hockey_dev_6to9",
-    "name": "Static Hockey Dev 6To9",
-    "date": "2026-09-12",
-    "videoUrl": "/data/raw/static_hockey_dev_6to9.mp4",
-    "jsonUrl": "/data/processed/static_hockey_dev_6to9_tracking.json"
-  },
-  {
-    "id": "static_hockey_dev",
-    "name": "Static Hockey Dev",
-    "date": "2026-09-12",
-    "videoUrl": "/data/raw/static_hockey_dev.mp4",
-    "jsonUrl": "/data/processed/static_hockey_dev_tracking.json"
-  },
-  {
-    "id": "pro_game",
-    "name": "Pro Game",
-    "date": "2026-09-12",
-    "videoUrl": "/data/raw/pro_game.mp4",
-    "jsonUrl": "/data/processed/pro_game_tracking.json"
+    "id": "LiveBarn_14sec_practice",
+    "name": "Livebarn 14Sec Practice",
+    "date": "2026-09-14",
+    "videoUrl": "/data/raw/LiveBarn_14sec_practice.mp4",
+    "jsonUrl": "/data/processed/LiveBarn_14sec_practice_tracking.json"
   }
 ]
