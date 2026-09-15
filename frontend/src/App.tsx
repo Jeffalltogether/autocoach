@@ -183,6 +183,7 @@ function App() {
         
         <Toolbar 
           videoRef={videoRef}
+          videoKey={activeSession?.videoUrl}
           onSeekToStart={() => {
             if (videoRef.current && selectedPlayer) {
               videoRef.current.currentTime = selectedPlayer.firstFrame / fps;

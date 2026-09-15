@@ -3,6 +3,7 @@ import type { RefObject } from 'react';
 
 interface ToolbarProps {
   videoRef: RefObject<HTMLVideoElement | null>;
+  videoKey?: string;
   onSeekToStart: () => void;
   onSeekToEnd: () => void;
   showAllBoundingBoxes: boolean;
@@ -27,6 +28,7 @@ interface ToolbarProps {
 
 export const Toolbar: React.FC<ToolbarProps> = ({
   videoRef,
+  videoKey,
   onSeekToStart,
   onSeekToEnd,
   showAllBoundingBoxes,
@@ -88,7 +90,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         video.removeEventListener('pause', handlePause);
       }
     };
-  }, [videoRef]);
+  }, [videoRef, videoKey]);
 
   const togglePlay = () => {
     if (videoRef.current) {
