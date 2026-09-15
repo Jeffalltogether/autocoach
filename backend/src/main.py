@@ -370,45 +370,12 @@ def main():
                         if res.keypoints is not None and len(res.keypoints) > 0:
                             kpts = res.keypoints.data[0].cpu().numpy()
                             kpts_list = []
-                            valid_xs = []
-                            valid_ys = []
-                            
                             for kx, ky, conf in kpts:
                                 if conf > 0:
-                                    global_kx = float(kx) + offset_x
-                                    global_ky = float(ky) + offset_y
-                                    kpts_list.append({"x": global_kx, "y": global_ky, "conf": float(conf)})
-                                    if conf > 0.3: # Only use confident keypoints to form the new bbox
-                                        valid_xs.append(global_kx)
-                                        valid_ys.append(global_ky)
+                                    kpts_list.append({"x": float(kx) + offset_x, "y": float(ky) + offset_y, "conf": float(conf)})
                                 else:
                                     kpts_list.append({"x": 0.0, "y": 0.0, "conf": 0.0})
                             player_dict["keypoints"] = kpts_list
-                            
-                            # RECALCULATE BOUNDING BOX TO IGNORE ICE SHADOWS
-                            # The central lighting casts long shadows outward from the midline.
-                            # YOLO includes the dark shadow in the bbox. We override it using the exact human joints!
-                            if len(valid_xs) >= 3:
-                                min_x, max_x = min(valid_xs), max(valid_xs)
-                                min_y, max_y = min(valid_ys), max(valid_ys)
-                                
-                                p_w = max_x - min_x
-                                p_h = max_y - min_y
-                                
-                                # Ensure we don't shrink too much on thin poses (e.g. player facing sideways)
-                                if p_w > 10 and p_h > 20:
-                                    # Add padding to cover the physical body mass around the skeleton
-                                    new_w = max(p_w * 1.5, 40.0)
-                                    new_h = p_h * 1.15
-                                    new_cx = (min_x + max_x) / 2.0
-                                    
-                                    # Shift center Y down slightly since keypoints rarely reach the bottom of the skate blade
-                                    new_cy = ((min_y + max_y) / 2.0) + (p_h * 0.05)
-                                    
-                                    player_dict["x"] = new_cx
-                                    player_dict["y"] = new_cy
-                                    player_dict["width"] = new_w
-                                    player_dict["height"] = new_h
                         
                         frame_data["players"].append(player_dict)
                 
