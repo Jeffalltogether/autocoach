@@ -53,29 +53,40 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const [duration, setDuration] = useState(0);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    setIsPlaying(!video.paused);
+    let video: HTMLVideoElement | null = null;
+    let animationId: number;
 
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
-    
-    let animationId: number;
+
     const updateTime = () => {
-      setCurrentTime(video.currentTime);
-      setDuration(video.duration || 0);
+      if (video) {
+        setCurrentTime(video.currentTime);
+        setDuration(video.duration || 0);
+      }
       animationId = requestAnimationFrame(updateTime);
     };
-    animationId = requestAnimationFrame(updateTime);
 
-    video.addEventListener('play', handlePlay);
-    video.addEventListener('pause', handlePause);
+    const attachListeners = () => {
+      video = videoRef.current;
+      if (video) {
+        setIsPlaying(!video.paused);
+        video.addEventListener('play', handlePlay);
+        video.addEventListener('pause', handlePause);
+        animationId = requestAnimationFrame(updateTime);
+      } else {
+        setTimeout(attachListeners, 100);
+      }
+    };
+
+    attachListeners();
 
     return () => {
       cancelAnimationFrame(animationId);
-      video.removeEventListener('play', handlePlay);
-      video.removeEventListener('pause', handlePause);
+      if (video) {
+        video.removeEventListener('play', handlePlay);
+        video.removeEventListener('pause', handlePause);
+      }
     };
   }, [videoRef]);
 
