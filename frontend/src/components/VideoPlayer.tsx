@@ -49,6 +49,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentFrameData, setCurrentFrameData] = useState<FrameData | null>(null);
   const [videoDimensions, setVideoDimensions] = useState({ width: 1920, height: 1080 });
+  const [lastOrigin, setLastOrigin] = useState('50% 50%');
 
   useEffect(() => {
     let animationId: number;
@@ -56,7 +57,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const syncFrame = () => {
       if (videoRef.current && trackingData.length > 0) {
         const time = videoRef.current.currentTime;
-        const frameIndex = Math.floor(time * fps);
+        // Use Math.round to avoid floating point precision issues causing infinite loops when clamping
+        const frameIndex = Math.round(time * fps);
         const frameData = trackingData.find(d => d.frame === frameIndex) || trackingData[0];
         setCurrentFrameData(frameData);
 
@@ -76,46 +78,44 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       }
       animationId = requestAnimationFrame(syncFrame);
     };
+    
     animationId = requestAnimationFrame(syncFrame);
     return () => cancelAnimationFrame(animationId);
-  }, [trackingData, fps, videoRef,
-  videoUrl, selectedPlayerId, loopPlayer, selectedPlayerFirstFrame, selectedPlayerLastFrame]);
+  }, [trackingData, fps, videoRef, loopPlayer, selectedPlayerId, selectedPlayerFirstFrame, selectedPlayerLastFrame]);
 
-  const handleVideoLoad = (e: React.SyntheticEvent<HTMLVideoElement>) => {
-    const video = e.currentTarget;
-    setVideoDimensions({ width: video.videoWidth || 1920, height: video.videoHeight || 1080 });
+  const handleVideoLoad = () => {
+    if (videoRef.current) {
+      setVideoDimensions({
+        width: videoRef.current.videoWidth,
+        height: videoRef.current.videoHeight
+      });
+    }
   };
 
-  // Don't fall back to players[0] if tracking a specific ID that is missing from the frame
-  const trackedPlayer = selectedPlayerId 
-    ? currentFrameData?.players.find(p => p.id === selectedPlayerId)
-    : undefined;
+  const trackedPlayer = currentFrameData?.players.find(p => p.id === selectedPlayerId);
+
+  // Keep track of the player's last known position so we can zoom in smoothly even if they toggle tracking while the player is on screen
+  useEffect(() => {
+    if (trackedPlayer) {
+      const px = trackedPlayer.x / videoDimensions.width;
+      const py = trackedPlayer.y / videoDimensions.height;
+      setLastOrigin(`${px * 100}% ${py * 100}%`);
+    }
+  }, [trackedPlayer, videoDimensions]);
 
   let transformStyle = {};
   if (trackPlayer && containerRef.current) {
-    if (trackedPlayer) {
-      const scale = Math.max(1, containerRef.current.clientWidth / cropSize);
-      const px = trackedPlayer.x / videoDimensions.width;
-      const py = trackedPlayer.y / videoDimensions.height;
-      transformStyle = {
-        transform: `scale(${scale})`,
-        transformOrigin: `${px * 100}% ${py * 100}%`,
-        transition: 'transform-origin 0.1s linear',
-      };
-    } else {
-      // If the player goes off screen, just hold the current zoom level and don't panic-snap to another player
-      const scale = Math.max(1, containerRef.current.clientWidth / cropSize);
-      transformStyle = {
-        transform: `scale(${scale})`,
-        // Don't update transformOrigin so it stays where they left the screen
-        transition: 'transform 0.3s ease',
-      };
-    }
+    const scale = Math.max(1, containerRef.current.clientWidth / cropSize);
+    transformStyle = {
+      transform: `scale(${scale})`,
+      transformOrigin: lastOrigin,
+      transition: 'transform-origin 0.1s linear, transform 0.3s ease',
+    };
   } else {
     transformStyle = {
       transform: 'scale(1)',
-      transformOrigin: 'center center',
-      transition: 'transform 0.3s ease',
+      transformOrigin: lastOrigin,
+      transition: 'transform-origin 0.1s linear, transform 0.3s ease',
     };
   }
 

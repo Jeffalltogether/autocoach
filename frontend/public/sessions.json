@@ -5,5 +5,12 @@
     "date": "2026-09-14",
     "videoUrl": "/data/raw/LiveBarn_14sec_practice.mp4",
     "jsonUrl": "/data/processed/LiveBarn_14sec_practice_tracking.json"
+  },
+  {
+    "id": "static_hockey_dev_6to9",
+    "name": "Static Hockey Dev 6To9",
+    "date": "2026-09-14",
+    "videoUrl": "/data/raw/static_hockey_dev_6to9.mp4",
+    "jsonUrl": "/data/processed/static_hockey_dev_6to9_tracking.json"
   }
 ]

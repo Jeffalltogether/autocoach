@@ -56,6 +56,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     const video = videoRef.current;
     if (!video) return;
 
+    setIsPlaying(!video.paused);
+
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
     

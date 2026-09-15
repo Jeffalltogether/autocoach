@@ -1,7 +1,7 @@
 import type { Session } from '../App';
-import type { Player, FrameData } from '../App';
+import type { Player } from '../App';
 import React from 'react';
-import type { RefObject } from 'react';
+
 
 interface SidebarProps {
   sessions: Session[];
