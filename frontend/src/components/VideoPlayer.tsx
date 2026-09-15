@@ -153,102 +153,117 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               aspectRatio: `${videoDimensions.width}/${videoDimensions.height}`
             }}
           >
-            {/* Draw Skeletons via SVG */}
-            {(showAllPoses || showPlayerPose) && (
-              <svg className="absolute inset-0 w-full h-full pointer-events-none z-20" viewBox={`0 0 ${videoDimensions.width} ${videoDimensions.height}`}>
-                {currentFrameData.players.map((player) => {
-                  const isSelected = player.id === selectedPlayerId;
-                  if (!showAllPoses && (!isSelected || !showPlayerPose)) return null;
+            {/* Draw Skeletons and Bounding Boxes via SVG */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none z-20" viewBox={`0 0 ${videoDimensions.width} ${videoDimensions.height}`}>
+              {currentFrameData.players.map((player) => {
+                const isSelected = player.id === selectedPlayerId;
+                const showBox = showAllBoundingBoxes || (showPlayerBoundingBox && isSelected);
+                const showPose = showAllPoses || (showPlayerPose && isSelected);
 
-                  if (!player.keypoints || !Array.isArray(player.keypoints) || player.keypoints.length < 17) {
-                    return null;
-                  }
-                  
-                  return (
-                    <g key={`pose-${player.id}`}>
-                      {/* Lines */}
-                      {SKELETON.map(([i, j], idx) => {
-                        const pt1 = player.keypoints![i];
-                        const pt2 = player.keypoints![j];
-                        if (pt1 && pt2 && pt1.conf > 0.1 && pt2.conf > 0.1) {
-                          return (
-                            <line 
-                              key={`line-${idx}`} 
-                              x1={pt1.x} y1={pt1.y} 
-                              x2={pt2.x} y2={pt2.y} 
-                              stroke={isSelected ? "#ef4444" : "#4ade80"} 
-                              strokeWidth="8" strokeOpacity="0.9" 
-                            />
-                          );
-                        }
-                        return null;
-                      })}
-                      {/* Dots */}
-                      {player.keypoints!.map((pt, idx) => {
-                        if (pt && pt.conf > 0.1) {
-                          return (
-                            <circle 
-                              key={`pt-${idx}`} 
-                              cx={pt.x} cy={pt.y} 
-                              r="8" 
-                              fill={isSelected ? "#dc2626" : "#22c55e"} 
-                            />
-                          );
-                        }
-                        return null;
-                      })}
-                    </g>
-                  );
-                })}
-              </svg>
-            )}
+                if (!showBox && !showPose) return null;
 
-            {/* Draw Bounding Boxes */}
-            {(showAllBoundingBoxes || showPlayerBoundingBox) && currentFrameData.players.map((player) => {
-              const isSelected = player.id === selectedPlayerId;
-              if (!showAllBoundingBoxes && (!isSelected || !showPlayerBoundingBox)) return null;
+                const top = player.y - player.height / 2;
+                const left = player.x - player.width / 2;
 
-              const top = player.y - player.height / 2;
-              const left = player.x - player.width / 2;
-              return (
-                <div 
-                  key={`box-${player.id}`}
-                  className={`absolute border-2 ${isSelected ? 'border-red-500 bg-red-500/20 z-10' : 'border-blue-500 bg-blue-500/10'}`}
-                  style={{
-                    left: `${(left / videoDimensions.width) * 100}%`,
-                    top: `${(top / videoDimensions.height) * 100}%`,
-                    width: `${(player.width / videoDimensions.width) * 100}%`,
-                    height: `${(player.height / videoDimensions.height) * 100}%`,
-                  }}
-                >
-                  <div className={`absolute -top-6 left-0 text-white text-xs px-1 font-mono whitespace-nowrap ${isSelected ? 'bg-red-500' : 'bg-blue-500'}`}>
-                    Player #{player.id}
-                  </div>
-                </div>
-              );
-            })}
+                return (
+                  <g key={`player-${player.id}`}>
+                    {showPose && (
+                      <g>
+                        {/* Lines */}
+                        {SKELETON.map(([i, j], idx) => {
+                          const pt1 = player.keypoints?.[i];
+                          const pt2 = player.keypoints?.[j];
+                          if (pt1 && pt2 && pt1.conf > 0.1 && pt2.conf > 0.1) {
+                            return (
+                              <line 
+                                key={`line-${idx}`} 
+                                x1={pt1.x} y1={pt1.y} 
+                                x2={pt2.x} y2={pt2.y} 
+                                stroke={isSelected ? "#ef4444" : "#4ade80"} 
+                                strokeWidth="8" strokeOpacity="0.9" 
+                              />
+                            );
+                          }
+                          return null;
+                        })}
+                        {/* Dots */}
+                        {player.keypoints?.map((pt, idx) => {
+                          if (pt && pt.conf > 0.1) {
+                            return (
+                              <circle 
+                                key={`pt-${idx}`} 
+                                cx={pt.x} cy={pt.y} 
+                                r="8" 
+                                fill={isSelected ? "#dc2626" : "#22c55e"} 
+                              />
+                            );
+                          }
+                          return null;
+                        })}
+                      </g>
+                    )}
 
-            {/* Draw Puck Bounding Boxes */}
-            {showPucks && currentFrameData.entities?.filter(e => e.type === 'puck' && (e.conf ?? 1) >= puckConfThreshold).map((puck, idx) => {
-              const top = puck.y - puck.height / 2;
-              const left = puck.x - puck.width / 2;
-              return (
-                <div 
-                  key={`puck-${idx}`}
-                  className="absolute border-2 border-amber-400 bg-amber-400/20 z-10"
-                  style={{
-                    left: `${(left / videoDimensions.width) * 100}%`,
-                    top: `${(top / videoDimensions.height) * 100}%`,
-                    width: `${(puck.width / videoDimensions.width) * 100}%`,
-                    height: `${(puck.height / videoDimensions.height) * 100}%`,
-                  }}
-                >
-                  <div className="absolute -top-5 left-0 text-white text-xs px-1 font-mono whitespace-nowrap bg-amber-500 rounded-sm">
-                    Puck
-                  </div>
-                </div>
-              );
-            })}
+                    {showBox && (
+                      <g>
+                        <rect 
+                          x={left} y={top} 
+                          width={player.width} height={player.height} 
+                          fill={isSelected ? "rgba(239, 68, 68, 0.2)" : "rgba(59, 130, 246, 0.1)"}
+                          stroke={isSelected ? "#ef4444" : "#3b82f6"}
+                          strokeWidth="4"
+                        />
+                        {/* Player ID Label */}
+                        <rect 
+                          x={left} y={top - 30} 
+                          width={140} height={30} 
+                          fill={isSelected ? "#ef4444" : "#3b82f6"} 
+                        />
+                        <text 
+                          x={left + 5} y={top - 8} 
+                          fill="#ffffff" 
+                          fontSize="24" 
+                          fontFamily="monospace"
+                          fontWeight="bold"
+                        >
+                          Player #{player.id}
+                        </text>
+                      </g>
+                    )}
+                  </g>
+                );
+              })}
+
+              {/* Draw Puck Bounding Boxes */}
+              {showPucks && currentFrameData.entities?.filter(e => e.type === 'puck' && (e.conf ?? 1) >= puckConfThreshold).map((puck, idx) => {
+                const top = puck.y - puck.height / 2;
+                const left = puck.x - puck.width / 2;
+                return (
+                  <g key={`puck-${idx}`}>
+                    <rect 
+                      x={left} y={top} 
+                      width={puck.width} height={puck.height} 
+                      fill="rgba(251, 191, 36, 0.2)"
+                      stroke="#fbbf24"
+                      strokeWidth="4"
+                    />
+                    <rect 
+                      x={left} y={top - 24} 
+                      width={80} height={24} 
+                      fill="#f59e0b" 
+                    />
+                    <text 
+                      x={left + 5} y={top - 6} 
+                      fill="#ffffff" 
+                      fontSize="18" 
+                      fontFamily="monospace"
+                      fontWeight="bold"
+                    >
+                      Puck
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
           </div>
         )}
       </div>
