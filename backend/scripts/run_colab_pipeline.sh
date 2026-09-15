@@ -51,29 +51,32 @@ echo "⚙️ Uploading backend code to Colab..."
 ~/.local/bin/colab upload -s $SESSION_NAME src/batch_process.py /content/batch_process.py
 
 echo "⚙️ Creating Colab Calibration Directory..."
-echo "!mkdir -p /content/drive/MyDrive/autocoach/calibration" | ~/.local/bin/colab exec -s $SESSION_NAME
+echo "!mkdir -p /content/drive/MyDrive/autocoach/calibration && mkdir -p /content/calib_tmp" | ~/.local/bin/colab exec -s $SESSION_NAME
 
-echo "⚙️ Uploading Calibration profiles to Google Drive..."
+echo "⚙️ Uploading Calibration profiles..."
 for f in ../data/calibration/*_camera_calib.json; do
     if [ -f "$f" ]; then
         filename=$(basename -- "$f")
-        ~/.local/bin/colab upload -s $SESSION_NAME "$f" "/content/drive/MyDrive/autocoach/calibration/$filename"
+        ~/.local/bin/colab upload -s $SESSION_NAME "$f" "/content/calib_tmp/$filename"
     fi
 done
 
 for f in ../data/calibration/*_homography.json; do
     if [ -f "$f" ]; then
         filename=$(basename -- "$f")
-        ~/.local/bin/colab upload -s $SESSION_NAME "$f" "/content/drive/MyDrive/autocoach/calibration/$filename"
+        ~/.local/bin/colab upload -s $SESSION_NAME "$f" "/content/calib_tmp/$filename"
     fi
 done
 
 for f in ../data/calibration/*_roi.json; do
     if [ -f "$f" ]; then
         filename=$(basename -- "$f")
-        ~/.local/bin/colab upload -s $SESSION_NAME "$f" "/content/drive/MyDrive/autocoach/calibration/$filename"
+        ~/.local/bin/colab upload -s $SESSION_NAME "$f" "/content/calib_tmp/$filename"
     fi
 done
+
+echo "⚙️ Syncing Calibration profiles to Google Drive..."
+echo "!cp /content/calib_tmp/* /content/drive/MyDrive/autocoach/calibration/" | ~/.local/bin/colab exec -s $SESSION_NAME
 
 echo "⚙️ Executing Batch Pipeline..."
 # Run the batch script which automatically skips already processed videos
