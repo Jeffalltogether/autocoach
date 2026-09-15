@@ -343,72 +343,41 @@ def main():
         offsets = []
         
         for p in merged_players:
-            # Define crop boundaries (with a 100px margin to catch wildly shifted YOLO bboxes)
+            # Define crop boundaries (with a 10px margin)
             x1, y1, x2, y2 = [int(v) for v in p["xyxy"]]
-            cy1, cy2 = max(0, y1-100), min(frame.shape[0], y2+100)
-            cx1, cx2 = max(0, x1-100), min(frame.shape[1], x2+100)
+            cy1, cy2 = max(0, y1-10), min(frame.shape[0], y2+10)
+            cx1, cx2 = max(0, x1-10), min(frame.shape[1], x2+10)
             
             crop = frame[cy1:cy2, cx1:cx2]
             if crop.size > 0:
                 crops.append(crop)
                 offsets.append((cx1, cy1))
                 valid_players.append(p)
-                
-        if len(crops) > 0:
-            # Add a safe batch size limit to prevent CUDA OOM on massive crowded frames
-            BATCH_SIZE = 32
-            for b_idx in range(0, len(crops), BATCH_SIZE):
-                batch_crops = crops[b_idx:b_idx+BATCH_SIZE]
-                pose_results = pose_model(batch_crops, verbose=False, device=device)
-                
-                for i, res in enumerate(pose_results):
-                    global_i = b_idx + i
-                    player_dict = valid_players[global_i]
-                    offset_x, offset_y = offsets[global_i]
+
+            # Run Pose Model in a single batched inference
+            if len(crops) > 0:
+                # Add a safe batch size limit to prevent CUDA OOM on massive crowded frames
+                BATCH_SIZE = 32
+                for b_idx in range(0, len(crops), BATCH_SIZE):
+                    batch_crops = crops[b_idx:b_idx+BATCH_SIZE]
+                    pose_results = pose_model(batch_crops, verbose=False, device=device)
                     
-                    if res.keypoints is not None and len(res.keypoints) > 0:
-                        kpts = res.keypoints.data[0].cpu().numpy()
-                        kpts_list = []
-                        valid_xs = []
-                        valid_ys = []
+                    for i, res in enumerate(pose_results):
+                        global_i = b_idx + i
+                        player_dict = valid_players[global_i]
+                        offset_x, offset_y = offsets[global_i]
                         
-                        for kx, ky, conf in kpts:
-                            if conf > 0:
-                                global_kx = float(kx) + offset_x
-                                global_ky = float(ky) + offset_y
-                                kpts_list.append({"x": global_kx, "y": global_ky, "conf": float(conf)})
-                                if conf > 0.3: # Only use confident keypoints to form the new bbox
-                                    valid_xs.append(global_kx)
-                                    valid_ys.append(global_ky)
-                            else:
-                                kpts_list.append({"x": 0.0, "y": 0.0, "conf": 0.0})
-                        player_dict["keypoints"] = kpts_list
+                        if res.keypoints is not None and len(res.keypoints) > 0:
+                            kpts = res.keypoints.data[0].cpu().numpy()
+                            kpts_list = []
+                            for kx, ky, conf in kpts:
+                                if conf > 0:
+                                    kpts_list.append({"x": float(kx) + offset_x, "y": float(ky) + offset_y, "conf": float(conf)})
+                                else:
+                                    kpts_list.append({"x": 0.0, "y": 0.0, "conf": 0.0})
+                            player_dict["keypoints"] = kpts_list
                         
-                        # RECALCULATE BOUNDING BOX FROM EXACT SKELETON
-                        # This perfectly bypasses the radial shift artifact from YOLO by snapping
-                        # the bounding box to the true physical location of the player's joints
-                        if len(valid_xs) >= 3:
-                            min_x, max_x = min(valid_xs), max(valid_xs)
-                            min_y, max_y = min(valid_ys), max(valid_ys)
-                            
-                            p_w = max_x - min_x
-                            p_h = max_y - min_y
-                            
-                            if p_w > 10 and p_h > 20:
-                                # Add padding to cover the physical body mass around the skeleton
-                                new_w = max(p_w * 1.5, 40.0)
-                                new_h = p_h * 1.15
-                                new_cx = (min_x + max_x) / 2.0
-                                
-                                # Shift center Y down slightly since keypoints rarely reach the bottom of the skate blade
-                                new_cy = ((min_y + max_y) / 2.0) + (p_h * 0.05)
-                                
-                                player_dict["x"] = new_cx
-                                player_dict["y"] = new_cy
-                                player_dict["width"] = new_w
-                                player_dict["height"] = new_h
-                    
-                    frame_data["players"].append(player_dict)
+                        frame_data["players"].append(player_dict)
                 
         # Extract Custom Entities (Hockey Model)
         if hockey_results[0].boxes is not None:
