@@ -110,17 +110,37 @@ def smooth_tracking_data(frames_data):
                     valid_x = x_arr[valid_mask]
                     valid_y = y_arr[valid_mask]
                     
-                    # Interpolate positions ONLY using frames where the keypoint was actually detected
-                    kx = np.interp(full_frames, valid_frames, valid_x)
-                    ky = np.interp(full_frames, valid_frames, valid_y)
-                    # Interpolate confidence across all frames so it naturally fades out when missing
-                    kconf = np.interp(full_frames, data["frames"], conf_arr)
+                    # Convert valid global coordinates into bounding-box-relative coordinates
+                    # so that interpolated poses "stick" to the moving bounding box during gaps
+                    smooth_x_valid = np.interp(valid_frames, full_frames, data["smooth_x"])
+                    smooth_y_valid = np.interp(valid_frames, full_frames, data["smooth_y"])
+                    smooth_w_valid = np.interp(valid_frames, full_frames, data["smooth_w"])
+                    smooth_h_valid = np.interp(valid_frames, full_frames, data["smooth_h"])
+                    
+                    # Prevent division by zero
+                    smooth_w_valid[smooth_w_valid == 0] = 1.0
+                    smooth_h_valid[smooth_h_valid == 0] = 1.0
+                    
+                    rel_x = (valid_x - smooth_x_valid) / smooth_w_valid
+                    rel_y = (valid_y - smooth_y_valid) / smooth_h_valid
+                    
+                    # Interpolate relative positions across the gap
+                    interp_rel_x = np.interp(full_frames, valid_frames, rel_x)
+                    interp_rel_y = np.interp(full_frames, valid_frames, rel_y)
+                    
+                    # Convert back to global coordinates using the bounding box path
+                    kx = interp_rel_x * data["smooth_w"] + data["smooth_x"]
+                    ky = interp_rel_y * data["smooth_h"] + data["smooth_y"]
+                    
+                    # Interpolate confidence ONLY across gaps, dropping it at start/end
+                    kconf = np.interp(full_frames, valid_frames, conf_arr[valid_mask], left=0.0, right=0.0)
                     
                     kx = smooth_track(kx)
                     ky = smooth_track(ky)
                     
                     # Force X, Y to exactly 0.0 where confidence is practically 0 to prevent "darting angels" 
-                    # from being drawn returning to the top left of the screen (0,0)
+                    # from being drawn returning to the top left of the screen (0,0). Because we used left/right=0.0 above,
+                    # this effectively trims the head/tail extrapolation without affecting intra-track gaps!
                     kx[kconf < 0.1] = 0.0
                     ky[kconf < 0.1] = 0.0
                 else:
