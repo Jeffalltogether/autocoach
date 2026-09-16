@@ -43,7 +43,7 @@ function App() {
   const [trackingData, setTrackingData] = useState<FrameData[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
-  
+  const [playerStats, setPlayerStats] = useState<Record<string, any>>({});
   const [showAllBoundingBoxes, setShowAllBoundingBoxes] = useState(true);
   const [showPlayerBoundingBox, setShowPlayerBoundingBox] = useState(false);
   const [showAllPoses, setShowAllPoses] = useState(true);
@@ -92,8 +92,10 @@ function App() {
       .then((data) => {
         // Handle both old flat array format and new nested object format
         const framesArray: FrameData[] = Array.isArray(data) ? data : (data.frames || []);
+        const stats = Array.isArray(data) ? {} : (data.player_stats || {});
         
         setTrackingData(framesArray);
+        setPlayerStats(stats);
         
         // Extract unique players and their first/last appearance
         const playerMap = new Map<number, {first: number, last: number}>();
@@ -138,6 +140,7 @@ function App() {
         players={players}
         selectedSession={selectedSession}
         selectedPlayer={selectedPlayer}
+        playerStats={playerStats}
         onSelectSession={setSelectedSession}
         onSelectPlayer={(p) => handleSelectPlayer(p)}
       />
@@ -162,7 +165,7 @@ function App() {
           fps={fps}
         />
         
-        <div className="max-h-56 overflow-y-auto shrink-0 flex flex-col border-t border-slate-700 custom-scrollbar bg-slate-900">
+        <div className="max-h-96 overflow-y-auto shrink-0 flex flex-col border-t border-slate-700 custom-scrollbar bg-slate-900">
           <TimelinePlot 
             videoRef={videoRef}
             trackingData={trackingData} 
@@ -178,6 +181,7 @@ function App() {
             trackingData={trackingData}
             fps={fps}
             selectedPlayerId={selectedPlayer?.id}
+            playerStats={playerStats}
           />
         </div>
         

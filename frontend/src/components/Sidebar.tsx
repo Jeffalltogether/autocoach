@@ -1,13 +1,14 @@
 import type { Session } from '../App';
 import type { Player } from '../App';
 import React from 'react';
-
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
 interface SidebarProps {
   sessions: Session[];
   players: Player[];
   selectedSession: Session | null;
   selectedPlayer: Player | null;
+  playerStats: Record<string, any>;
   onSelectSession: (s: Session) => void;
   onSelectPlayer: (p: Player) => void;
 }
@@ -17,6 +18,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   players,
   selectedSession,
   selectedPlayer,
+  playerStats,
   onSelectSession,
   onSelectPlayer
 }) => {
@@ -66,6 +68,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <p className="text-sm text-slate-500 italic">Select a session first</p>
         )}
       </div>
+
+      {selectedPlayer && playerStats && playerStats[selectedPlayer.id] && (
+        <div className="p-4 border-t border-slate-700 bg-slate-900 flex-shrink-0">
+          <h3 className="text-sm uppercase tracking-wider text-slate-400 font-semibold mb-2">Player Card</h3>
+          <div className="bg-slate-800 rounded-lg p-3 shadow-inner">
+            <div className="text-center font-bold text-lg text-blue-400 mb-2">{selectedPlayer.name}</div>
+            
+            {/* Radar Chart */}
+            <div className="h-48 w-full -ml-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart 
+                  cx="50%" cy="50%" outerRadius="70%" 
+                  data={[
+                    { subject: 'Hustle', A: playerStats[selectedPlayer.id].radar_scores?.hustle || 0, fullMark: 100 },
+                    { subject: 'Speed', A: playerStats[selectedPlayer.id].radar_scores?.speed || 0, fullMark: 100 },
+                    { subject: 'Energizer', A: playerStats[selectedPlayer.id].radar_scores?.energizer || 0, fullMark: 100 }
+                  ]}
+                >
+                  <PolarGrid stroke="#475569" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                  <Radar name="Player" dataKey="A" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.5} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Raw Values */}
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <div className="bg-slate-700 rounded p-2 text-center">
+                <div className="text-xs text-slate-400">Distance</div>
+                <div className="font-bold text-sm">{playerStats[selectedPlayer.id].total_distance_ft?.toFixed(1) || 0} ft</div>
+              </div>
+              <div className="bg-slate-700 rounded p-2 text-center">
+                <div className="text-xs text-slate-400">Speed Bursts</div>
+                <div className="font-bold text-sm">{playerStats[selectedPlayer.id].speed_bursts || 0}</div>
+              </div>
+              <div className="bg-slate-700 rounded p-2 text-center col-span-2">
+                <div className="text-xs text-slate-400">Energizer Ratio</div>
+                <div className="font-bold text-sm">{((playerStats[selectedPlayer.id].energizer_ratio || 0) * 100).toFixed(0)}%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import type { RefObject } from 'react';
 import type { FrameData } from '../App';
 
@@ -7,15 +7,19 @@ interface MiniMapProps {
   trackingData: FrameData[];
   fps: number;
   selectedPlayerId?: number;
+  playerStats?: Record<string, any>;
 }
 
 export const MiniMap: React.FC<MiniMapProps> = ({
   videoRef,
   trackingData,
   fps,
-  selectedPlayerId
+  selectedPlayerId,
+  playerStats
 }) => {
   const [currentFrameData, setCurrentFrameData] = useState<FrameData | null>(null);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Sync to video time
   useEffect(() => {
@@ -25,10 +29,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
         const time = videoRef.current.currentTime;
         const frameIndex = Math.floor(time * fps);
         
-        // Fast O(1) lookup since the array is ordered by frame
         let frameData = trackingData[frameIndex];
-        
-        // Fallback search if the video time exceeds the array or frames are dropped
         if (!frameData || frameData.frame !== frameIndex) {
             frameData = trackingData.find(d => Math.abs(d.frame - frameIndex) <= 1) || trackingData[0];
         }
@@ -43,22 +44,75 @@ export const MiniMap: React.FC<MiniMapProps> = ({
     return () => cancelAnimationFrame(animationId);
   }, [trackingData, fps, videoRef]);
 
-  // Standard Rink transposed: 200 ft long (X), 85 ft wide (Y).
-  // The calibrated neutral zone is 85x50, starting at X=75 on the full rink.
+  // Standard Rink transposed
   const RINK_WIDTH = 200;
   const RINK_HEIGHT = 85;
   const NEUTRAL_ZONE_OFFSET_X = 75;
 
+  // Heatmap rendering logic
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    if (showHeatmap && selectedPlayerId) {
+      // Draw Heatmap
+      ctx.filter = 'blur(4px)';
+      ctx.globalAlpha = 0.15;
+      ctx.fillStyle = '#ef4444'; // Red heatmap
+
+      trackingData.forEach(frame => {
+        const player = frame.players.find(p => p.id === selectedPlayerId);
+        if (player && player.real_x !== undefined && player.real_y !== undefined) {
+          const mappedX = player.real_x + NEUTRAL_ZONE_OFFSET_X;
+          const mappedY = player.real_y;
+          
+          ctx.beginPath();
+          ctx.arc(mappedX, mappedY, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+      
+      // Reset context
+      ctx.filter = 'none';
+      ctx.globalAlpha = 1.0;
+    }
+  }, [showHeatmap, selectedPlayerId, trackingData]);
+
   return (
-    <div className="p-2 pb-4 border-t border-slate-700 bg-slate-800 flex flex-col items-center">
-      <h3 className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-2 w-full">Live Tracker</h3>
+    <div className="p-2 pb-4 border-t border-slate-700 bg-slate-800 flex flex-col items-center flex-1">
+      <div className="flex justify-between items-center w-full mb-2">
+        <h3 className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Live Tracker</h3>
+        <button 
+          onClick={() => setShowHeatmap(!showHeatmap)}
+          disabled={!selectedPlayerId}
+          className={`text-xs px-2 py-1 rounded transition-colors ${
+            !selectedPlayerId ? 'opacity-50 cursor-not-allowed bg-slate-700 text-slate-500' :
+            showHeatmap ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+          }`}
+        >
+          {showHeatmap ? 'Heatmap: ON' : 'Heatmap: OFF'}
+        </button>
+      </div>
+      
       <div 
-        className="relative flex justify-center items-center"
-        style={{ width: '100%', maxWidth: '500px', height: '140px' }} // Adjusted styling for tighter horizontal view
+        className="relative flex justify-center items-center w-full h-full min-h-[250px]"
       >
+        <canvas 
+          ref={canvasRef}
+          width={RINK_WIDTH}
+          height={RINK_HEIGHT}
+          className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10"
+        />
+
         <svg 
           viewBox={`0 0 ${RINK_WIDTH} ${RINK_HEIGHT}`} 
-          className="w-full h-full pointer-events-none"
+          className="absolute inset-0 w-full h-full object-contain pointer-events-none z-20"
           preserveAspectRatio="xMidYMid meet"
         >
           <defs>
@@ -68,7 +122,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
           </defs>
 
           {/* Ice Surface */}
-          <rect x="0" y="0" width={RINK_WIDTH} height={RINK_HEIGHT} rx="28" ry="28" fill="#f8fafc" stroke="#94a3b8" strokeWidth="1" />
+          <rect x="0" y="0" width={RINK_WIDTH} height={RINK_HEIGHT} rx="28" ry="28" fill="#f8fafc" stroke="#94a3b8" strokeWidth="1" fillOpacity={showHeatmap ? 0.9 : 1} />
           
           <g clipPath="url(#rink-clip)">
             {/* Center Red Line */}
@@ -86,18 +140,14 @@ export const MiniMap: React.FC<MiniMapProps> = ({
             <line x1="189" y1="0" x2="189" y2={RINK_HEIGHT} stroke="#ef4444" strokeWidth="0.5" />
             
             {/* Creases */}
-            {/* Left crease at x=11, spanning y=38.5 to 46.5 */}
             <path d="M 11 38.5 A 4 4 0 0 1 11 46.5" fill="#3b82f6" fillOpacity="0.3" stroke="#ef4444" strokeWidth="0.5" />
-            {/* Right crease at x=189, spanning y=38.5 to 46.5 */}
             <path d="M 189 38.5 A 4 4 0 0 0 189 46.5" fill="#3b82f6" fillOpacity="0.3" stroke="#ef4444" strokeWidth="0.5" />
 
-            {/* End Zone Faceoff Circles */}
+            {/* End Zone Faceoff Circles & Dots */}
             <circle cx="31" cy="20.5" r="15" fill="none" stroke="#ef4444" strokeWidth="0.5" />
             <circle cx="31" cy="64.5" r="15" fill="none" stroke="#ef4444" strokeWidth="0.5" />
             <circle cx="169" cy="20.5" r="15" fill="none" stroke="#ef4444" strokeWidth="0.5" />
             <circle cx="169" cy="64.5" r="15" fill="none" stroke="#ef4444" strokeWidth="0.5" />
-
-            {/* End Zone Faceoff Dots */}
             <circle cx="31" cy="20.5" r="1" fill="#ef4444" />
             <circle cx="31" cy="64.5" r="1" fill="#ef4444" />
             <circle cx="169" cy="20.5" r="1" fill="#ef4444" />
@@ -111,12 +161,9 @@ export const MiniMap: React.FC<MiniMapProps> = ({
           </g>
           
           {/* Dots representing players */}
-          {currentFrameData?.players.map(player => {
+          {!showHeatmap && currentFrameData?.players.map(player => {
             if (player.real_x === undefined || player.real_y === undefined) return null;
             
-            // Transpose mapping:
-            // Length maps to X across the SVG.
-            // Width maps to Y down the SVG.
             const mappedX = player.real_x + NEUTRAL_ZONE_OFFSET_X;
             const mappedY = player.real_y;
             
@@ -135,6 +182,26 @@ export const MiniMap: React.FC<MiniMapProps> = ({
                 r={isSelected ? "3" : "2"}
                 fill={color}
                 stroke="#fff"
+                strokeWidth="0.5"
+              />
+            );
+          })}
+
+          {/* If heatmap is on, only show the selected player dot on top of heatmap */}
+          {showHeatmap && selectedPlayerId && currentFrameData?.players.map(player => {
+            if (player.id !== selectedPlayerId || player.real_x === undefined || player.real_y === undefined) return null;
+            
+            const mappedX = player.real_x + NEUTRAL_ZONE_OFFSET_X;
+            const mappedY = player.real_y;
+            
+            return (
+              <circle 
+                key={player.id}
+                cx={mappedX} 
+                cy={mappedY} 
+                r="3"
+                fill="#ffffff"
+                stroke="#000000"
                 strokeWidth="0.5"
               />
             );
