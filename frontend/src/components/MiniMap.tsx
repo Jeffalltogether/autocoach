@@ -145,11 +145,21 @@ export const MiniMap: React.FC<MiniMapProps> = ({
       <div 
         className="relative flex justify-center items-center w-full flex-1 min-h-0"
       >
+        <svg 
+          viewBox={`0 0 ${RINK_WIDTH} ${RINK_HEIGHT}`} 
+          className="absolute inset-0 w-full h-full object-contain pointer-events-none z-0"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          {/* Base Ice Surface */}
+          <rect x="0" y="0" width={RINK_WIDTH} height={RINK_HEIGHT} rx="28" ry="28" fill="#f8fafc" stroke="#94a3b8" strokeWidth="1" />
+        </svg>
+
         <canvas 
           ref={canvasRef}
           width={RINK_WIDTH}
           height={RINK_HEIGHT}
           className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10"
+          style={{ mixBlendMode: 'multiply' }}
         />
 
         <svg 
@@ -162,9 +172,9 @@ export const MiniMap: React.FC<MiniMapProps> = ({
               <rect x="0" y="0" width={RINK_WIDTH} height={RINK_HEIGHT} rx="28" ry="28" />
             </clipPath>
           </defs>
-
-          {/* Ice Surface */}
-          <rect x="0" y="0" width={RINK_WIDTH} height={RINK_HEIGHT} rx="28" ry="28" fill="#f8fafc" stroke="#94a3b8" strokeWidth="1" fillOpacity={showHeatmap ? 0.9 : 1} />
+          
+          {/* Rink Outline Overlay (to cover edges smoothly) */}
+          <rect x="0" y="0" width={RINK_WIDTH} height={RINK_HEIGHT} rx="28" ry="28" fill="none" stroke="#94a3b8" strokeWidth="1" />
           
           <g clipPath="url(#rink-clip)">
             {/* Center Red Line */}
