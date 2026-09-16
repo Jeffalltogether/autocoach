@@ -363,10 +363,17 @@ def main():
         offsets = []
         
         for p in merged_players:
-            # Define crop boundaries (with a 10px margin)
+            # Define crop boundaries dynamically based on player size to handle all resolutions and lens distortions
             x1, y1, x2, y2 = [int(v) for v in p["xyxy"]]
-            cy1, cy2 = max(0, y1-10), min(frame.shape[0], y2+10)
-            cx1, cx2 = max(0, x1-10), min(frame.shape[1], x2+10)
+            w = x2 - x1
+            h = y2 - y1
+            
+            # 50% margin means the crop is 2x wider and taller than the YOLO box
+            margin_x = int(w * 0.5)
+            margin_y = int(h * 0.5)
+            
+            cy1, cy2 = max(0, y1 - margin_y), min(frame.shape[0], y2 + margin_y)
+            cx1, cx2 = max(0, x1 - margin_x), min(frame.shape[1], x2 + margin_x)
             
             crop = frame[cy1:cy2, cx1:cx2]
             if crop.size > 0:
@@ -389,9 +396,35 @@ def main():
                         offset_x, offset_y = offsets[global_i]
                         
                         if res.keypoints is not None and len(res.keypoints) > 0:
-                            kpts = res.keypoints.data[0].cpu().numpy()
+                            # We need to find the skeleton that belongs to the original YOLO bounding box.
+                            # Calculate the center of the original YOLO box relative to this crop:
+                            x1_o, y1_o, x2_o, y2_o = [int(v) for v in player_dict["xyxy"]]
+                            local_box_cx = ((x1_o + x2_o) / 2.0) - offset_x
+                            local_box_cy = ((y1_o + y2_o) / 2.0) - offset_y
+                            
+                            best_kpts = None
+                            min_dist = float('inf')
+                            
+                            for skel_idx in range(len(res.keypoints)):
+                                temp_kpts = res.keypoints.data[skel_idx].cpu().numpy()
+                                valid_joints = [pt for pt in temp_kpts if pt[2] > 0.3]
+                                
+                                if len(valid_joints) > 0:
+                                    skel_cx = sum(pt[0] for pt in valid_joints) / len(valid_joints)
+                                    skel_cy = sum(pt[1] for pt in valid_joints) / len(valid_joints)
+                                    
+                                    # Distance from skeleton's center of mass to the intended player's box center
+                                    dist = ((skel_cx - local_box_cx)**2 + (skel_cy - local_box_cy)**2)**0.5
+                                    if dist < min_dist:
+                                        min_dist = dist
+                                        best_kpts = temp_kpts
+                                        
+                            # Fallback to the first skeleton if all joints were low confidence
+                            if best_kpts is None:
+                                best_kpts = res.keypoints.data[0].cpu().numpy()
+                                
                             kpts_list = []
-                            for kx, ky, conf in kpts:
+                            for kx, ky, conf in best_kpts:
                                 if conf > 0:
                                     kpts_list.append({"x": float(kx) + offset_x, "y": float(ky) + offset_y, "conf": float(conf)})
                                 else:
