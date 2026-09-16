@@ -100,10 +100,10 @@ export const MiniMap: React.FC<MiniMapProps> = ({
         const grad = gctx.createLinearGradient(0, 0, 0, 256);
         // Jet Colormap: transparent -> dark blue -> blue -> cyan -> green -> yellow -> red
         grad.addColorStop(0, 'rgba(0,0,128,0)');
-        grad.addColorStop(0.05, 'rgba(0,0,255,0.6)'); // Ramp up alpha very quickly so it's not dim
-        grad.addColorStop(0.3, 'rgba(0,255,255,0.85)');
-        grad.addColorStop(0.5, 'rgba(0,255,0,0.95)');
-        grad.addColorStop(0.7, 'rgba(255,255,0,1)');
+        grad.addColorStop(0.1, 'rgba(0,0,255,0.3)'); // Soft fade in
+        grad.addColorStop(0.3, 'rgba(0,255,255,0.6)');
+        grad.addColorStop(0.5, 'rgba(0,255,0,0.8)');
+        grad.addColorStop(0.7, 'rgba(255,255,0,0.9)');
         grad.addColorStop(1, 'rgba(255,0,0,1)');
         gctx.fillStyle = grad;
         gctx.fillRect(0, 0, 1, 256);
@@ -158,7 +158,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
           ref={canvasRef}
           width={RINK_WIDTH}
           height={RINK_HEIGHT}
-          className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10"
+          className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10 opacity-85"
           style={{ mixBlendMode: 'multiply' }}
         />
 
