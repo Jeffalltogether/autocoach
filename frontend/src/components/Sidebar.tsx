@@ -13,6 +13,21 @@ interface SidebarProps {
   onSelectPlayer: (p: Player) => void;
 }
 
+const CustomTick = ({ payload, x, y, textAnchor, stroke, radius }: any) => {
+  const parts = payload.value.includes('-') ? payload.value.split('-') : [payload.value];
+  return (
+    <g className="recharts-layer recharts-polar-angle-axis-tick">
+      <text radius={radius} stroke={stroke} x={x} y={y} className="recharts-text recharts-polar-angle-axis-tick-value" textAnchor={textAnchor} fill="#94a3b8" fontSize={11}>
+        {parts.map((part: string, index: number) => {
+          const content = index < parts.length - 1 ? `${part}-` : part;
+          const dy = parts.length > 1 ? (index === 0 ? -4 : 12) : 0;
+          return <tspan x={x} dy={dy} key={index}>{content}</tspan>;
+        })}
+      </text>
+    </g>
+  );
+};
+
 export const Sidebar: React.FC<SidebarProps> = ({
   sessions,
   players,
@@ -79,7 +94,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="h-48 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart 
-                  cx="50%" cy="50%" outerRadius="60%" 
+                  cx="50%" cy="50%" outerRadius="65%" 
                   data={[
                     { subject: 'Hustle', A: playerStats[selectedPlayer.id].radar_scores?.hustle ?? Math.min(100, (playerStats[selectedPlayer.id].total_distance_ft || 0) * 1.5), fullMark: 100 },
                     { subject: 'Speed', A: playerStats[selectedPlayer.id].radar_scores?.speed ?? Math.min(100, (playerStats[selectedPlayer.id].max_velocity_mph || 0) * 4), fullMark: 100 },
@@ -88,7 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   ]}
                 >
                   <PolarGrid stroke="#475569" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <PolarAngleAxis dataKey="subject" tick={<CustomTick />} />
                   <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
                   <Radar name="Player" dataKey="A" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.5} />
                 </RadarChart>
