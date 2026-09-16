@@ -126,37 +126,28 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   return (
     <div className="flex-1 bg-black overflow-hidden relative flex items-center justify-center" ref={containerRef}>
       <div 
-        className="relative" 
+        className="relative flex items-center justify-center" 
         style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          width: videoDimensions.width, 
+          height: videoDimensions.height,
+          maxWidth: '100%',
+          maxHeight: '100%',
+          aspectRatio: `${videoDimensions.width}/${videoDimensions.height}`,
           ...transformStyle
         }}
       >
         <video key={videoUrl} 
           ref={videoRef}
           src={videoUrl} 
-          className="absolute max-w-full max-h-full"
-          style={{ width: videoDimensions.width, height: videoDimensions.height, objectFit: 'contain' }}
+          className="absolute inset-0 w-full h-full"
+          style={{ objectFit: 'contain' }}
           controls={false}
           autoPlay muted playsInline loop={!loopPlayer} // Only use standard HTML5 loop if we aren't enforcing a player loop
           onLoadedMetadata={handleVideoLoad}
         />
 
         {currentFrameData && (
-          <div 
-            className="absolute"
-            style={{ 
-              width: videoDimensions.width, 
-              height: videoDimensions.height,
-              maxWidth: '100%',
-              maxHeight: '100%',
-              aspectRatio: `${videoDimensions.width}/${videoDimensions.height}`
-            }}
-          >
+          <div className="absolute inset-0">
             {/* Draw Skeletons and Bounding Boxes via SVG */}
             <svg className="absolute inset-0 w-full h-full pointer-events-none z-20" viewBox={`0 0 ${videoDimensions.width} ${videoDimensions.height}`}>
               {currentFrameData.players.map((player) => {
