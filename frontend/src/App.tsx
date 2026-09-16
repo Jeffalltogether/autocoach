@@ -165,7 +165,7 @@ function App() {
           fps={fps}
         />
         
-        <div className="h-[35vh] min-h-[200px] shrink-0 flex flex-col border-t border-slate-700 custom-scrollbar bg-slate-900">
+        <div className="h-[45vh] min-h-[200px] shrink-0 flex flex-col border-t border-slate-700 custom-scrollbar bg-slate-900">
           <TimelinePlot 
             videoRef={videoRef}
             trackingData={trackingData} 

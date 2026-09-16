@@ -72,9 +72,9 @@ export const MiniMap: React.FC<MiniMapProps> = ({
       const dynamicAlpha = Math.max(0.01, Math.min(0.5, 40 / (playerFrameCount || 1)));
 
       // Draw Heatmap
-      ctx.filter = 'blur(6px)';
+      ctx.filter = 'blur(3px)'; // reduced blur for sharper mapping
       ctx.globalAlpha = dynamicAlpha;
-      ctx.fillStyle = '#ef4444'; // Red heatmap
+      ctx.fillStyle = '#000000'; // Draw in black to build alpha density
 
       trackingData.forEach(frame => {
         const player = frame.players.find(p => p.id === selectedPlayerId);
@@ -83,14 +83,46 @@ export const MiniMap: React.FC<MiniMapProps> = ({
           const mappedY = player.real_y;
           
           ctx.beginPath();
-          ctx.arc(mappedX, mappedY, 8, 0, Math.PI * 2);
+          ctx.arc(mappedX, mappedY, 6, 0, Math.PI * 2);
           ctx.fill();
         }
       });
       
-      // Reset context
+      // Reset context before reading pixels
       ctx.filter = 'none';
       ctx.globalAlpha = 1.0;
+      
+      // Map alpha to Jet Colormap
+      const gradCanvas = document.createElement('canvas');
+      gradCanvas.width = 1; gradCanvas.height = 256;
+      const gctx = gradCanvas.getContext('2d');
+      if (gctx) {
+        const grad = gctx.createLinearGradient(0, 0, 0, 256);
+        // Jet Colormap: transparent -> dark blue -> blue -> cyan -> green -> yellow -> red
+        grad.addColorStop(0, 'rgba(0,0,128,0)');
+        grad.addColorStop(0.1, 'rgba(0,0,255,0.2)');
+        grad.addColorStop(0.3, 'rgba(0,255,255,0.5)');
+        grad.addColorStop(0.5, 'rgba(0,255,0,0.7)');
+        grad.addColorStop(0.7, 'rgba(255,255,0,0.8)');
+        grad.addColorStop(1, 'rgba(255,0,0,1)');
+        gctx.fillStyle = grad;
+        gctx.fillRect(0, 0, 1, 256);
+        const colormap = gctx.getImageData(0, 0, 1, 256).data;
+        
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const pixels = imgData.data;
+        for (let i = 0; i < pixels.length; i += 4) {
+          const a = pixels[i + 3]; // Alpha channel is our density
+          if (a > 0) {
+            const cIdx = a * 4;
+            pixels[i] = colormap[cIdx];         // R
+            pixels[i+1] = colormap[cIdx + 1];   // G
+            pixels[i+2] = colormap[cIdx + 2];   // B
+            pixels[i+3] = colormap[cIdx + 3];   // A
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
     }
   }, [showHeatmap, selectedPlayerId, trackingData]);
 
@@ -185,15 +217,28 @@ export const MiniMap: React.FC<MiniMapProps> = ({
             if (isPossessing && !isSelected) color = "#eab308"; // Possessing yellow
             
             return (
-              <circle 
-                key={player.id}
-                cx={mappedX} 
-                cy={mappedY} 
-                r={isSelected ? "3" : "2"}
-                fill={color}
-                stroke="#fff"
-                strokeWidth="0.5"
-              />
+              <g key={player.id}>
+                <circle 
+                  cx={mappedX} 
+                  cy={mappedY} 
+                  r={isSelected ? "4" : "3"}
+                  fill={color}
+                  stroke="#fff"
+                  strokeWidth="0.5"
+                />
+                <text
+                  x={mappedX}
+                  y={mappedY + 1}
+                  textAnchor="middle"
+                  alignmentBaseline="middle"
+                  fill="#ffffff"
+                  fontSize={isSelected ? "3" : "2"}
+                  fontFamily="sans-serif"
+                  fontWeight="bold"
+                >
+                  {player.id}
+                </text>
+              </g>
             );
           })}
 
@@ -205,15 +250,28 @@ export const MiniMap: React.FC<MiniMapProps> = ({
             const mappedY = player.real_y;
             
             return (
-              <circle 
-                key={player.id}
-                cx={mappedX} 
-                cy={mappedY} 
-                r="3"
-                fill="#ffffff"
-                stroke="#000000"
-                strokeWidth="0.5"
-              />
+              <g key={player.id}>
+                <circle 
+                  cx={mappedX} 
+                  cy={mappedY} 
+                  r="4"
+                  fill="#ffffff"
+                  stroke="#000000"
+                  strokeWidth="0.5"
+                />
+                <text
+                  x={mappedX}
+                  y={mappedY + 1}
+                  textAnchor="middle"
+                  alignmentBaseline="middle"
+                  fill="#000000"
+                  fontSize="3"
+                  fontFamily="sans-serif"
+                  fontWeight="bold"
+                >
+                  {player.id}
+                </text>
+              </g>
             );
           })}
           
