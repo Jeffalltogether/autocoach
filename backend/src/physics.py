@@ -153,11 +153,18 @@ def apply_physics_and_events(frames_data, homography_matrix, fps):
                         if mph > player_stats[pid]["max_velocity_mph"]:
                             player_stats[pid]["max_velocity_mph"] = round(mph, 2)
                             
-                        # Active vs Gliding
+                        # The Energizer: Active ( > 3 mph) vs Gliding
                         if mph > 3.0:
                             player_stats[pid]["active_frames"] += frames_passed
                             
-                        # Acceleration Calculation (from already smoothed velocity)
+                        # Globe Trotter: track 5x5 ft grid cells visited
+                        cell_x = int(p["real_x"] // 5)
+                        cell_y = int(p["real_y"] // 5)
+                        if "visited_cells" not in player_stats[pid]:
+                            player_stats[pid]["visited_cells"] = set()
+                        player_stats[pid]["visited_cells"].add((cell_x, cell_y))
+                            
+                        # True Acceleration Calculation (over a ~0.5 sec window)
                         recent_speeds = hist.setdefault("recent_speeds", [])
                         recent_speeds.append(mph)
                         
@@ -227,15 +234,23 @@ def apply_physics_and_events(frames_data, homography_matrix, fps):
         stats["possession_time_sec"] = round(stats["possession_frames"] / fps, 2)
         stats["energizer_ratio"] = round(stats["active_frames"] / max(1, stats["total_frames_on_ice"]), 2)
         
+        # Globe Trotter Percentage (Assuming ~17000 sq ft NHL Rink, 25 sq ft per cell)
+        visited_area = len(stats.get("visited_cells", set())) * 25.0
+        globe_trotter_pct = round(min(100.0, (visited_area / 17000.0) * 100), 1)
+        stats["globe_trotter_pct"] = globe_trotter_pct
+        
         stats["radar_scores"] = {
             "hustle": min(100, int((stats["total_distance_ft"] / 3000.0) * 100)),
             "speed": min(100, int((stats["speed_bursts"] / 10.0) * 100)),
-            "energizer": int(stats["energizer_ratio"] * 100)
+            "energizer": int(stats["energizer_ratio"] * 100),
+            "globe_trotter": min(100, int((globe_trotter_pct / 30.0) * 100)) # Assume 30% coverage = max radar score
         }
         
         del stats["possession_frames"]
         del stats["current_shift_start"]
         del stats["active_frames"]
+        if "visited_cells" in stats:
+            del stats["visited_cells"]
                         
     final_output = {
         "metadata": {

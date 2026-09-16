@@ -83,7 +83,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   data={[
                     { subject: 'Hustle', A: playerStats[selectedPlayer.id].radar_scores?.hustle ?? Math.min(100, (playerStats[selectedPlayer.id].total_distance_ft || 0) * 1.5), fullMark: 100 },
                     { subject: 'Speed', A: playerStats[selectedPlayer.id].radar_scores?.speed ?? Math.min(100, (playerStats[selectedPlayer.id].max_velocity_mph || 0) * 4), fullMark: 100 },
-                    { subject: 'Energizer', A: playerStats[selectedPlayer.id].radar_scores?.energizer ?? Math.min(100, (playerStats[selectedPlayer.id].possession_time_sec || 0) * 30), fullMark: 100 }
+                    { subject: 'Energizer', A: playerStats[selectedPlayer.id].radar_scores?.energizer ?? Math.min(100, (playerStats[selectedPlayer.id].possession_time_sec || 0) * 30), fullMark: 100 },
+                    { subject: 'Globe-Trotter', A: playerStats[selectedPlayer.id].radar_scores?.globe_trotter ?? Math.min(100, (playerStats[selectedPlayer.id].globe_trotter_pct || 0) * 3.33), fullMark: 100 }
                   ]}
                 >
                   <PolarGrid stroke="#475569" />
@@ -104,9 +105,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="text-xs text-slate-400">Speed Bursts</div>
                 <div className="font-bold text-sm">{playerStats[selectedPlayer.id].speed_bursts ?? Math.floor((playerStats[selectedPlayer.id].max_velocity_mph || 0) / 4)}</div>
               </div>
-              <div className="bg-slate-700 rounded p-2 text-center col-span-2">
+              <div className="bg-slate-700 rounded p-2 text-center">
                 <div className="text-xs text-slate-400">Energizer Ratio</div>
                 <div className="font-bold text-sm">{((playerStats[selectedPlayer.id].energizer_ratio ?? Math.min(1, (playerStats[selectedPlayer.id].possession_time_sec || 0) / 2)) * 100).toFixed(0)}%</div>
+              </div>
+              <div className="bg-slate-700 rounded p-2 text-center">
+                <div className="text-xs text-slate-400">Globe-Trotter</div>
+                <div className="font-bold text-sm">{(playerStats[selectedPlayer.id].globe_trotter_pct || 0).toFixed(1)}%</div>
               </div>
             </div>
           </div>
