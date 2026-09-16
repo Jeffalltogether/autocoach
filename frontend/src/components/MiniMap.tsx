@@ -62,8 +62,8 @@ export const MiniMap: React.FC<MiniMapProps> = ({
     
     if (showHeatmap && selectedPlayerId) {
       // Draw Heatmap
-      ctx.filter = 'blur(4px)';
-      ctx.globalAlpha = 0.15;
+      ctx.filter = 'blur(6px)';
+      ctx.globalAlpha = 0.5;
       ctx.fillStyle = '#ef4444'; // Red heatmap
 
       trackingData.forEach(frame => {
@@ -73,7 +73,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
           const mappedY = player.real_y;
           
           ctx.beginPath();
-          ctx.arc(mappedX, mappedY, 3, 0, Math.PI * 2);
+          ctx.arc(mappedX, mappedY, 8, 0, Math.PI * 2);
           ctx.fill();
         }
       });

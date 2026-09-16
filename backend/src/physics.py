@@ -55,15 +55,43 @@ def apply_physics_and_events(frames_data, homography_matrix, fps):
 
             # Initialize stats dict
             if pid not in player_stats:
-                player_stats[pid] = {"max_velocity_mph": 0.0, "total_distance_ft": 0.0, "possession_frames": 0}
+                player_stats[pid] = {
+                    "max_velocity_mph": 0.0, 
+                    "total_distance_ft": 0.0, 
+                    "possession_frames": 0,
+                    # New Youth Metrics
+                    "speed_bursts": 0,
+                    "active_frames": 0,
+                    "total_frames_on_ice": 1,
+                    "current_shift_start": f_idx,
+                    "shifts": []
+                }
+            else:
+                player_stats[pid]["total_frames_on_ice"] += 1
 
             # Calculate Velocity
             p["velocity_mph"] = 0.0
             if pid not in player_history:
-                player_history[pid] = {"last_real_x": p["real_x"], "last_real_y": p["real_y"], "last_frame": f_idx}
+                player_history[pid] = {
+                    "last_real_x": p["real_x"], 
+                    "last_real_y": p["real_y"], 
+                    "last_frame": f_idx,
+                    "in_burst": False
+                }
             else:
                 hist = player_history[pid]
                 frames_passed = f_idx - hist["last_frame"]
+                
+                # Shift tracking: if they disappeared for > 3 seconds, count as a new shift
+                if frames_passed > fps * 3.0:
+                    shift_duration = hist["last_frame"] - player_stats[pid]["current_shift_start"]
+                    if shift_duration > fps * 5.0: # Minimum 5 sec to record a shift
+                        player_stats[pid]["shifts"].append({
+                            "start_frame": player_stats[pid]["current_shift_start"],
+                            "end_frame": hist["last_frame"],
+                            "duration_sec": round(shift_duration / fps, 1)
+                        })
+                    player_stats[pid]["current_shift_start"] = f_idx
                 
                 if frames_passed > 0:
                     dist_ft = calculate_distance((p["real_x"], p["real_y"]), (hist["last_real_x"], hist["last_real_y"]))
@@ -75,8 +103,20 @@ def apply_physics_and_events(frames_data, homography_matrix, fps):
                         
                         p["velocity_mph"] = float(round(mph, 2))
                         player_stats[pid]["total_distance_ft"] += dist_ft
+                        
                         if mph > player_stats[pid]["max_velocity_mph"]:
                             player_stats[pid]["max_velocity_mph"] = round(mph, 2)
+                            
+                        # The Energizer: Active ( > 3 mph) vs Gliding
+                        if mph > 3.0:
+                            player_stats[pid]["active_frames"] += frames_passed
+                            
+                        # Speed Bursts: Accelerating above 10 mph
+                        if mph > 10.0 and not hist.get("in_burst", False):
+                            player_stats[pid]["speed_bursts"] += 1
+                            hist["in_burst"] = True
+                        elif mph < 6.0:
+                            hist["in_burst"] = False
                             
                 hist["last_real_x"] = p["real_x"]
                 hist["last_real_y"] = p["real_y"]
@@ -131,11 +171,35 @@ def apply_physics_and_events(frames_data, homography_matrix, fps):
                 })
                 current_possessor = frame_possessor
                         
-    # Round off the stats for clean JSON
+    # Finalize shifts and round off stats for clean JSON
     for pid, stats in player_stats.items():
+        # Close out any pending shift at the end of the video
+        if pid in player_history:
+            hist = player_history[pid]
+            shift_duration = hist["last_frame"] - stats["current_shift_start"]
+            if shift_duration > fps * 5.0: # Minimum 5 sec to record a shift
+                stats["shifts"].append({
+                    "start_frame": stats["current_shift_start"],
+                    "end_frame": hist["last_frame"],
+                    "duration_sec": round(shift_duration / fps, 1)
+                })
+
         stats["total_distance_ft"] = round(stats["total_distance_ft"], 2)
         stats["possession_time_sec"] = round(stats["possession_frames"] / fps, 2)
+        stats["energizer_ratio"] = round(stats["active_frames"] / max(1, stats["total_frames_on_ice"]), 2)
+        
+        # Calculate normalized scores (0-100) for the frontend Radar chart
+        # Assumptions for scaling: 3000ft is max hustle, 10 bursts is max speed, ratio is 0-1
+        stats["radar_scores"] = {
+            "hustle": min(100, int((stats["total_distance_ft"] / 3000.0) * 100)),
+            "speed": min(100, int((stats["speed_bursts"] / 10.0) * 100)),
+            "energizer": int(stats["energizer_ratio"] * 100)
+        }
+        
+        # Cleanup internal tracking fields
         del stats["possession_frames"]
+        del stats["current_shift_start"]
+        del stats["active_frames"]
                         
     # Wrap everything in the new top-level structure
     final_output = {

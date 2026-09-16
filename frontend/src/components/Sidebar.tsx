@@ -81,9 +81,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <RadarChart 
                   cx="50%" cy="50%" outerRadius="70%" 
                   data={[
-                    { subject: 'Hustle', A: playerStats[selectedPlayer.id].radar_scores?.hustle || 0, fullMark: 100 },
-                    { subject: 'Speed', A: playerStats[selectedPlayer.id].radar_scores?.speed || 0, fullMark: 100 },
-                    { subject: 'Energizer', A: playerStats[selectedPlayer.id].radar_scores?.energizer || 0, fullMark: 100 }
+                    { subject: 'Hustle', A: playerStats[selectedPlayer.id].radar_scores?.hustle ?? Math.min(100, (playerStats[selectedPlayer.id].total_distance_ft || 0) * 1.5), fullMark: 100 },
+                    { subject: 'Speed', A: playerStats[selectedPlayer.id].radar_scores?.speed ?? Math.min(100, (playerStats[selectedPlayer.id].max_velocity_mph || 0) * 4), fullMark: 100 },
+                    { subject: 'Energizer', A: playerStats[selectedPlayer.id].radar_scores?.energizer ?? Math.min(100, (playerStats[selectedPlayer.id].possession_time_sec || 0) * 30), fullMark: 100 }
                   ]}
                 >
                   <PolarGrid stroke="#475569" />
