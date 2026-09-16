@@ -12,7 +12,7 @@ DRIVE_OUTPUT_PATH="/content/drive/MyDrive/autocoach/processed_data/pro_game_outp
 echo "🚀 Checking for existing Colab GPU Session ($SESSION_NAME)..."
 if ~/.local/bin/colab status -s $SESSION_NAME 2>&1 | grep -q "not found"; then
     echo "🚀 Provisioning new Colab GPU Session ($SESSION_NAME)..."
-    ~/.local/bin/colab new -s $SESSION_NAME --gpu T4
+    ~/.local/bin/colab new -s $SESSION_NAME --gpu L4
 else
     echo "✅ Session '$SESSION_NAME' is already running! Skipping provisioning."
 fi

@@ -377,7 +377,8 @@ def main():
             # Run Pose Model in a single batched inference
             if len(crops) > 0:
                 # Add a safe batch size limit to prevent CUDA OOM on massive crowded frames
-                BATCH_SIZE = 32
+                # Increased to 64 since we are now running on an L4 GPU (24GB VRAM)
+                BATCH_SIZE = 64
                 for b_idx in range(0, len(crops), BATCH_SIZE):
                     batch_crops = crops[b_idx:b_idx+BATCH_SIZE]
                     pose_results = pose_model(batch_crops, verbose=False, device=device)
