@@ -76,10 +76,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="text-center font-bold text-lg text-blue-400 mb-2">{selectedPlayer.name}</div>
             
             {/* Radar Chart */}
-            <div className="h-48 w-full -ml-2">
+            <div className="h-48 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart 
-                  cx="50%" cy="50%" outerRadius="70%" 
+                  cx="50%" cy="50%" outerRadius="60%" 
                   data={[
                     { subject: 'Hustle', A: playerStats[selectedPlayer.id].radar_scores?.hustle ?? Math.min(100, (playerStats[selectedPlayer.id].total_distance_ft || 0) * 1.5), fullMark: 100 },
                     { subject: 'Speed', A: playerStats[selectedPlayer.id].radar_scores?.speed ?? Math.min(100, (playerStats[selectedPlayer.id].max_velocity_mph || 0) * 4), fullMark: 100 },
