@@ -68,8 +68,8 @@ export const MiniMap: React.FC<MiniMapProps> = ({
         }
       });
       
-      // Aim for ~40 overlapping frames to reach solid color
-      const dynamicAlpha = Math.max(0.01, Math.min(0.5, 40 / (playerFrameCount || 1)));
+      // Aim for fewer overlapping frames to reach solid color to make the heatmap much brighter
+      const dynamicAlpha = Math.max(0.02, Math.min(0.8, 150 / (playerFrameCount || 1)));
 
       // Draw Heatmap
       ctx.filter = 'blur(3px)'; // reduced blur for sharper mapping
@@ -100,10 +100,10 @@ export const MiniMap: React.FC<MiniMapProps> = ({
         const grad = gctx.createLinearGradient(0, 0, 0, 256);
         // Jet Colormap: transparent -> dark blue -> blue -> cyan -> green -> yellow -> red
         grad.addColorStop(0, 'rgba(0,0,128,0)');
-        grad.addColorStop(0.1, 'rgba(0,0,255,0.2)');
-        grad.addColorStop(0.3, 'rgba(0,255,255,0.5)');
-        grad.addColorStop(0.5, 'rgba(0,255,0,0.7)');
-        grad.addColorStop(0.7, 'rgba(255,255,0,0.8)');
+        grad.addColorStop(0.05, 'rgba(0,0,255,0.6)'); // Ramp up alpha very quickly so it's not dim
+        grad.addColorStop(0.3, 'rgba(0,255,255,0.85)');
+        grad.addColorStop(0.5, 'rgba(0,255,0,0.95)');
+        grad.addColorStop(0.7, 'rgba(255,255,0,1)');
         grad.addColorStop(1, 'rgba(255,0,0,1)');
         gctx.fillStyle = grad;
         gctx.fillRect(0, 0, 1, 256);
@@ -114,7 +114,9 @@ export const MiniMap: React.FC<MiniMapProps> = ({
         for (let i = 0; i < pixels.length; i += 4) {
           const a = pixels[i + 3]; // Alpha channel is our density
           if (a > 0) {
-            const cIdx = a * 4;
+            // Boost the mapped intensity slightly so it feels hotter
+            const boostedA = Math.min(255, Math.floor(a * 1.5));
+            const cIdx = boostedA * 4;
             pixels[i] = colormap[cIdx];         // R
             pixels[i+1] = colormap[cIdx + 1];   // G
             pixels[i+2] = colormap[cIdx + 2];   // B
