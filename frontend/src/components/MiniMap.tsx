@@ -113,7 +113,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
       </div>
       
       <div 
-        className="relative flex justify-center items-center w-full h-full min-h-[250px]"
+        className="relative flex justify-center items-center w-full flex-1 min-h-0"
       >
         <canvas 
           ref={canvasRef}
