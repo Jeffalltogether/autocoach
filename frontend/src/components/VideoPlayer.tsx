@@ -113,13 +113,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     transformStyle = {
       transform: `scale(${scale})`,
       transformOrigin: lastOriginRef.current,
-      transition: 'transform-origin 0.1s linear, transform 0.3s ease',
+      transition: 'transform 0.3s ease',
     };
   } else {
     transformStyle = {
       transform: 'scale(1)',
       transformOrigin: lastOriginRef.current,
-      transition: 'transform-origin 0.1s linear, transform 0.3s ease',
+      transition: 'transform 0.3s ease',
     };
   }
 
