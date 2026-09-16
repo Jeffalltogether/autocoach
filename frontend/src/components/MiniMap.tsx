@@ -228,11 +228,11 @@ export const MiniMap: React.FC<MiniMapProps> = ({
                 />
                 <text
                   x={mappedX}
-                  y={mappedY + 1}
+                  y={mappedY + 0.5}
                   textAnchor="middle"
                   alignmentBaseline="middle"
                   fill="#ffffff"
-                  fontSize={isSelected ? "3" : "2"}
+                  fontSize={isSelected ? "4.5" : "3.5"}
                   fontFamily="sans-serif"
                   fontWeight="bold"
                 >
@@ -261,11 +261,11 @@ export const MiniMap: React.FC<MiniMapProps> = ({
                 />
                 <text
                   x={mappedX}
-                  y={mappedY + 1}
+                  y={mappedY + 0.5}
                   textAnchor="middle"
                   alignmentBaseline="middle"
                   fill="#000000"
-                  fontSize="3"
+                  fontSize="4.5"
                   fontFamily="sans-serif"
                   fontWeight="bold"
                 >
