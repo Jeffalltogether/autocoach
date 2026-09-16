@@ -118,6 +118,18 @@ export const TimelinePlot: React.FC<TimelinePlotProps> = ({ videoRef, trackingDa
         className="flex-1 bg-slate-900 rounded border border-slate-700 relative overflow-hidden flex items-end cursor-pointer hover:border-slate-500 transition-colors"
         onClick={handlePlotClick}
       >
+        {/* Y-Axis Gridlines & Labels */}
+        <div className="absolute inset-0 pointer-events-none z-0">
+          <div className="absolute top-0 w-full border-t border-slate-700 border-dashed opacity-50"></div>
+          <div className="absolute top-0 left-1 text-[10px] text-slate-500 font-mono">30 mph</div>
+          
+          <div className="absolute top-[33.33%] w-full border-t border-slate-700 border-dashed opacity-50"></div>
+          <div className="absolute top-[33.33%] left-1 text-[10px] text-slate-500 font-mono -mt-2">20 mph</div>
+          
+          <div className="absolute top-[66.66%] w-full border-t border-slate-700 border-dashed opacity-50"></div>
+          <div className="absolute top-[66.66%] left-1 text-[10px] text-slate-500 font-mono -mt-2">10 mph</div>
+        </div>
+
         {plotPoints.length > 0 ? (
           <svg className="absolute inset-0 w-full h-full preserve-3d opacity-50" preserveAspectRatio="none" viewBox="0 0 100 100">
             {/* Draw Contact Spans as background blocks */}
