@@ -11,7 +11,7 @@ describe('sessions.json configuration', () => {
 
     expect(Array.isArray(sessions)).toBe(true);
 
-    sessions.forEach((session: any, index: number) => {
+    sessions.forEach((session: any) => {
       expect(session).toHaveProperty('id');
       expect(session.id).toBeTypeOf('string');
       

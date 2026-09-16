@@ -23,10 +23,19 @@ DRIVE_VIDEO_PATH="/content/drive/MyDrive/autocoach/raw_videos/pro_game.mp4"
 DRIVE_JSON_PATH="/content/drive/MyDrive/autocoach/processed_data/pro_game_tracking.json"
 DRIVE_OUTPUT_PATH="/content/drive/MyDrive/autocoach/processed_data/pro_game_output.mp4"
 
-echo "🚀 Checking for existing Colab GPU Session ($SESSION_NAME)..."
+# Check if we can safely skip provisioning a GPU
+if [ -n "$FORCE_PHYSICS" ] && [ -n "$SKIP_NEW" ] && [ -z "$FORCE_YOLO" ]; then
+    GPU_FLAG=""
+    INSTANCE_TYPE="CPU"
+else
+    GPU_FLAG="--gpu L4"
+    INSTANCE_TYPE="GPU"
+fi
+
+echo "🚀 Checking for existing Colab $INSTANCE_TYPE Session ($SESSION_NAME)..."
 if ~/.local/bin/colab status -s $SESSION_NAME 2>&1 | grep -q "not found"; then
-    echo "🚀 Provisioning new Colab GPU Session ($SESSION_NAME)..."
-    ~/.local/bin/colab new -s $SESSION_NAME --gpu L4
+    echo "🚀 Provisioning new Colab $INSTANCE_TYPE Session ($SESSION_NAME)..."
+    ~/.local/bin/colab new -s $SESSION_NAME $GPU_FLAG
 else
     echo "✅ Session '$SESSION_NAME' is already running! Skipping provisioning."
 fi
@@ -43,8 +52,10 @@ fi
 echo "📦 Installing Dependencies from pyproject.toml..."
 ~/.local/bin/colab install -s $SESSION_NAME -r pyproject.toml
 
-echo "🧠 Checking for HockeyAI Model in Google Drive..."
-echo "
+# Only download the HockeyAI model if we are running YOLO
+if [ "$INSTANCE_TYPE" = "GPU" ]; then
+    echo "🧠 Checking for HockeyAI Model in Google Drive..."
+    echo "
 import os
 from huggingface_hub import hf_hub_download
 
@@ -58,6 +69,7 @@ if not os.path.exists(model_path):
 else:
     print('✅ Model found in Google Drive! Skipping download.')
 " | ~/.local/bin/colab exec -s $SESSION_NAME
+fi
 
 echo "⚙️ Uploading backend code to Colab..."
 ~/.local/bin/colab upload -s $SESSION_NAME src/main.py /content/main.py

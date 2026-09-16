@@ -7,15 +7,13 @@ interface MiniMapProps {
   trackingData: FrameData[];
   fps: number;
   selectedPlayerId?: number;
-  playerStats?: Record<string, any>;
 }
 
 export const MiniMap: React.FC<MiniMapProps> = ({
   videoRef,
   trackingData,
   fps,
-  selectedPlayerId,
-  playerStats
+  selectedPlayerId
 }) => {
   const [currentFrameData, setCurrentFrameData] = useState<FrameData | null>(null);
   const [showHeatmap, setShowHeatmap] = useState(false);

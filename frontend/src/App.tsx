@@ -181,7 +181,6 @@ function App() {
             trackingData={trackingData}
             fps={fps}
             selectedPlayerId={selectedPlayer?.id}
-            playerStats={playerStats}
           />
         </div>
         
