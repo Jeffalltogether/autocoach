@@ -49,7 +49,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentFrameData, setCurrentFrameData] = useState<FrameData | null>(null);
   const [videoDimensions, setVideoDimensions] = useState({ width: 1920, height: 1080 });
-  const [lastOrigin, setLastOrigin] = useState('50% 50%');
+  const lastOriginRef = useRef('50% 50%');
 
   useEffect(() => {
     let animationId: number;
@@ -59,7 +59,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         const time = videoRef.current.currentTime;
         // Use Math.round to avoid floating point precision issues causing infinite loops when clamping
         const frameIndex = Math.round(time * fps);
-        const frameData = trackingData.find(d => d.frame === frameIndex) || trackingData[0];
+        
+        let frameData = trackingData[frameIndex];
+        if (!frameData || frameData.frame !== frameIndex) {
+            frameData = trackingData.find(d => Math.abs(d.frame - frameIndex) <= 1) || trackingData[0];
+        }
+
         setCurrentFrameData(frameData);
 
         // Watch Player Sequence Logic
@@ -95,26 +100,25 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const trackedPlayer = currentFrameData?.players.find(p => p.id === selectedPlayerId);
 
   // Keep track of the player's last known position so we can zoom in smoothly even if they toggle tracking while the player is on screen
-  useEffect(() => {
-    if (trackedPlayer) {
-      const px = trackedPlayer.x / videoDimensions.width;
-      const py = trackedPlayer.y / videoDimensions.height;
-      setLastOrigin(`${px * 100}% ${py * 100}%`);
-    }
-  }, [trackedPlayer, videoDimensions]);
+  // Update it synchronously during render to avoid cascading re-renders that break tracking continuity
+  if (trackedPlayer) {
+    const px = trackedPlayer.x / videoDimensions.width;
+    const py = trackedPlayer.y / videoDimensions.height;
+    lastOriginRef.current = `${px * 100}% ${py * 100}%`;
+  }
 
   let transformStyle = {};
   if (trackPlayer && containerRef.current) {
     const scale = Math.max(1, containerRef.current.clientWidth / cropSize);
     transformStyle = {
       transform: `scale(${scale})`,
-      transformOrigin: lastOrigin,
+      transformOrigin: lastOriginRef.current,
       transition: 'transform-origin 0.1s linear, transform 0.3s ease',
     };
   } else {
     transformStyle = {
       transform: 'scale(1)',
-      transformOrigin: lastOrigin,
+      transformOrigin: lastOriginRef.current,
       transition: 'transform-origin 0.1s linear, transform 0.3s ease',
     };
   }

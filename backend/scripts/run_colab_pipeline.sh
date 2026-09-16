@@ -2,6 +2,20 @@
 # Exit on error
 set -e
 
+FORCE_YOLO=""
+FORCE_PHYSICS=""
+SKIP_NEW=""
+
+# Parse command line flags
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        -f|--force-yolo) FORCE_YOLO="-f"; shift ;;
+        -p|--force-physics) FORCE_PHYSICS="-p"; shift ;;
+        -s|--skip-new) SKIP_NEW="-s"; shift ;;
+        *) echo "Unknown parameter passed: $1"; exit 1 ;;
+    esac
+done
+
 SESSION_NAME="autocoach"
 
 # Ensure the video paths match the Google Drive structure you created
@@ -79,8 +93,8 @@ echo "⚙️ Syncing Calibration profiles to Google Drive..."
 echo "!cp /content/calib_tmp/* /content/drive/MyDrive/autocoach/calibration/" | ~/.local/bin/colab exec -s $SESSION_NAME
 
 echo "⚙️ Executing Batch Pipeline..."
-# Run the batch script which automatically skips already processed videos
-echo "!python /content/batch_process.py" | ~/.local/bin/colab exec -s $SESSION_NAME --timeout 7200
+BATCH_ARGS="${FORCE_YOLO} ${FORCE_PHYSICS} ${SKIP_NEW}"
+echo "!python /content/batch_process.py $BATCH_ARGS" | ~/.local/bin/colab exec -s $SESSION_NAME --timeout 7200
 
 echo "📥 Zipping and Downloading Processed Results to Local Machine..."
 LOCAL_DATA_DIR="/Users/jeff/Library/CloudStorage/OneDrive-Personal/git/autocoach/data/processed"
@@ -101,7 +115,6 @@ echo "🛑 Tearing down session..."
 ~/.local/bin/colab stop -s $SESSION_NAME
 
 echo "✅ Pipeline Complete!"
-
 
 echo "📝 Updating frontend sessions.json..."
 uv run python scripts/update_sessions.py

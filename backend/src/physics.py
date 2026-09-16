@@ -111,11 +111,24 @@ def apply_physics_and_events(frames_data, homography_matrix, fps):
                         if mph > 3.0:
                             player_stats[pid]["active_frames"] += frames_passed
                             
-                        # Speed Bursts: Accelerating above 10 mph
-                        if mph > 10.0 and not hist.get("in_burst", False):
+                        # True Acceleration Calculation (over a ~0.5 sec window)
+                        recent_speeds = hist.setdefault("recent_speeds", [])
+                        recent_speeds.append(mph)
+                        
+                        window_size = max(1, int(fps / 2))
+                        if len(recent_speeds) > window_size:
+                            old_mph = recent_speeds.pop(0)
+                            accel_mph_s = (mph - old_mph) / (window_size / fps)
+                        else:
+                            accel_mph_s = 0.0
+                            
+                        # Speed Bursts: Explosive acceleration (e.g., accelerating > 6.0 mph/s)
+                        # This rewards effort and quick starts regardless of the absolute top speed.
+                        if accel_mph_s > 6.0 and not hist.get("in_burst", False):
                             player_stats[pid]["speed_bursts"] += 1
                             hist["in_burst"] = True
-                        elif mph < 6.0:
+                        elif accel_mph_s < 1.0:
+                            # Reset the burst trigger once acceleration normalizes
                             hist["in_burst"] = False
                             
                 hist["last_real_x"] = p["real_x"]
