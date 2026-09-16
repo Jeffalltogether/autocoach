@@ -61,9 +61,21 @@ export const MiniMap: React.FC<MiniMapProps> = ({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     if (showHeatmap && selectedPlayerId) {
+      // Dynamically scale opacity based on how many frames the player appears in
+      // This prevents long videos from becoming solid red blocks, and short videos from being invisible.
+      let playerFrameCount = 0;
+      trackingData.forEach(frame => {
+        if (frame.players.some(p => p.id === selectedPlayerId)) {
+          playerFrameCount++;
+        }
+      });
+      
+      // Aim for ~40 overlapping frames to reach solid color
+      const dynamicAlpha = Math.max(0.01, Math.min(0.5, 40 / (playerFrameCount || 1)));
+
       // Draw Heatmap
       ctx.filter = 'blur(6px)';
-      ctx.globalAlpha = 0.5;
+      ctx.globalAlpha = dynamicAlpha;
       ctx.fillStyle = '#ef4444'; // Red heatmap
 
       trackingData.forEach(frame => {
