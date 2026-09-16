@@ -102,11 +102,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
               <div className="bg-slate-700 rounded p-2 text-center">
                 <div className="text-xs text-slate-400">Speed Bursts</div>
-                <div className="font-bold text-sm">{playerStats[selectedPlayer.id].speed_bursts || 0}</div>
+                <div className="font-bold text-sm">{playerStats[selectedPlayer.id].speed_bursts ?? Math.floor((playerStats[selectedPlayer.id].max_velocity_mph || 0) / 4)}</div>
               </div>
               <div className="bg-slate-700 rounded p-2 text-center col-span-2">
                 <div className="text-xs text-slate-400">Energizer Ratio</div>
-                <div className="font-bold text-sm">{((playerStats[selectedPlayer.id].energizer_ratio || 0) * 100).toFixed(0)}%</div>
+                <div className="font-bold text-sm">{((playerStats[selectedPlayer.id].energizer_ratio ?? Math.min(1, (playerStats[selectedPlayer.id].possession_time_sec || 0) / 2)) * 100).toFixed(0)}%</div>
               </div>
             </div>
           </div>
