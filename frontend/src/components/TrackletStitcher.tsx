@@ -78,6 +78,25 @@ export const TrackletStitcher: React.FC<TrackletStitcherProps> = ({
     }
   };
 
+  const handleDropToNewPlayer = (e: React.DragEvent) => {
+    e.preventDefault();
+    const draggedPlayerId = e.dataTransfer.getData('text/plain');
+    if (draggedPlayerId) {
+      const originalRosterId = `r_${draggedPlayerId}`;
+      const newAssignments = { ...localAssignments, [draggedPlayerId]: originalRosterId };
+      
+      // Check if original roster exists
+      if (!localRoster.some(r => r.id === originalRosterId)) {
+        const newProfile = { id: originalRosterId, name: `Player #${draggedPlayerId}`, jersey: '', color: '#3b82f6' };
+        setLocalRoster([...localRoster, newProfile]);
+        onUpdate([...localRoster, newProfile], newAssignments, localIgnored);
+      } else {
+        setLocalAssignments(newAssignments);
+        onUpdate(localRoster, newAssignments, localIgnored);
+      }
+    }
+  };
+
   // Check temporal overlap against a specific roster row
   const checkOverlap = (targetRosterId: string, testPlayerId: string | null): boolean => {
     if (!testPlayerId) return false;
@@ -212,12 +231,22 @@ export const TrackletStitcher: React.FC<TrackletStitcherProps> = ({
         })}
       </div>
 
-      <div 
-        className="h-24 bg-slate-800 border-2 border-dashed border-slate-600 flex items-center justify-center text-slate-400 rounded-lg hover:border-red-500 hover:text-red-400 transition-colors"
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={handleDropToTrash}
-      >
-        <div className="text-xl font-bold">🗑️ Drag tracks here to ignore/trash</div>
+      <div className="flex space-x-4 mt-2 h-20 shrink-0">
+        <div 
+          className="flex-1 bg-slate-800 border-2 border-dashed border-slate-600 flex items-center justify-center text-slate-400 rounded-lg hover:border-blue-500 hover:text-blue-400 transition-colors cursor-crosshair"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={handleDropToNewPlayer}
+        >
+          <div className="text-lg font-bold">✂️ Un-stitch (Split to new row)</div>
+        </div>
+        
+        <div 
+          className="flex-1 bg-slate-800 border-2 border-dashed border-slate-600 flex items-center justify-center text-slate-400 rounded-lg hover:border-red-500 hover:text-red-400 transition-colors cursor-crosshair"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={handleDropToTrash}
+        >
+          <div className="text-lg font-bold">🗑️ Trash / Ignore Tracks</div>
+        </div>
       </div>
     </div>
   );
