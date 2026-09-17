@@ -194,6 +194,7 @@ function App() {
           players={players}
           trackingData={trackingData}
           onClose={() => setShowStitcher(false)}
+          onSelectPlayer={handleSelectPlayer}
           onUpdate={(newRoster, newAssignments, newIgnored) => {
             setRoster(newRoster);
             setAssignments(newAssignments);

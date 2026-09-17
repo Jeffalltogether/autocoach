@@ -1,0 +1,61 @@
+--- frontend/src/components/TrackletStitcher.tsx
++++ frontend/src/components/TrackletStitcher.tsx
+@@ -10,10 +10,23 @@
+   trackingData: FrameData[];
+   onClose: () => void;
+   onUpdate: (newRoster: RosterPlayer[], newAssignments: Record<string, string>, newIgnored: number[]) => void;
++  onSelectPlayer?: (p: Player) => void;
+ }
+ 
++const getLocationZone = (realX?: number, realY?: number) => {
++  if (realX === undefined || realY === undefined) return "Unknown";
++  let xZone = "Neutral Zone";
++  if (realX < -33) xZone = "Left Zone";
++  if (realX > 33) xZone = "Right Zone";
++  
++  let yZone = "Center";
++  if (realY < 28) yZone = "Top Boards";
++  if (realY > 57) yZone = "Bottom Boards";
++  return `${xZone} (${yZone})`;
++};
++
+ export const TrackletStitcher: React.FC<TrackletStitcherProps> = ({
+-  roster, assignments, ignoredTracks, players, trackingData, onClose, onUpdate
++  roster, assignments, ignoredTracks, players, trackingData, onClose, onUpdate, onSelectPlayer
+ }) => {
+   const [localRoster, setLocalRoster] = useState<RosterPlayer[]>(roster);
+   const [localAssignments, setLocalAssignments] = useState<Record<string, string>>(assignments);
+@@ -128,15 +141,31 @@
+                   const isIgnored = localIgnored.includes(p.id);
+                   if (isIgnored) return null;
+ 
++                  const startFrameData = trackingData.find(f => f.frame === p.firstFrame);
++                  const endFrameData = trackingData.find(f => f.frame === p.lastFrame);
++                  const startTrack = startFrameData?.players.find(x => x.id === p.id);
++                  const endTrack = endFrameData?.players.find(x => x.id === p.id);
++
++                  const startLoc = getLocationZone(startTrack?.real_x, startTrack?.real_y);
++                  const endLoc = getLocationZone(endTrack?.real_x, endTrack?.real_y);
++                  const durationSec = ((p.lastFrame - p.firstFrame) / 30).toFixed(1);
++
++                  const tooltipText = `Track ${p.id}\nTime: ${durationSec}s (Frames ${p.firstFrame}-${p.lastFrame})\nStart: ${startLoc}\nEnd: ${endLoc}\n\n[Click to seek video]`;
++
+                   return (
+                     <div 
+                       key={p.id}
+                       draggable
++                      onClick={() => onSelectPlayer && onSelectPlayer(p)}
+                       onDragStart={(e) => handleDragStart(e, p.id.toString())}
+                       onDragEnd={handleDragEnd}
+-                      className="absolute top-1 bottom-1 bg-blue-500 rounded text-xs px-1 whitespace-nowrap overflow-hidden cursor-move border border-blue-400 shadow flex items-center"
++                      className="absolute top-1 bottom-1 bg-blue-500 rounded text-xs px-1 whitespace-nowrap overflow-hidden cursor-move border border-blue-400 shadow flex items-center hover:ring-2 hover:ring-white transition-shadow"
+                       style={{ left: `${left}%`, width: `${width}%`, backgroundColor: group.rosterProfile.color }}
+-                      title={`Track ${p.id}: Frames ${p.firstFrame}-${p.lastFrame}`}
++                      title={tooltipText}
+                     >
+-                      {p.id}
++                      <span className="font-bold mr-1">{p.id}</span>
++                      {width > 15 && <span className="opacity-75 text-[10px] hidden md:inline truncate">{startLoc}</span>}
+                     </div>
+                   );
+                 })}
