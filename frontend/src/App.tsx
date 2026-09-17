@@ -193,6 +193,7 @@ function App() {
           ignoredTracks={ignoredTracks}
           players={players}
           trackingData={trackingData}
+          selectedPlayerId={selectedPlayer?.id}
           onClose={() => setShowStitcher(false)}
           onSelectPlayer={handleSelectPlayer}
           onUpdate={(newRoster, newAssignments, newIgnored) => {

@@ -8,6 +8,7 @@ interface TrackletStitcherProps {
   ignoredTracks: number[];
   players: Player[]; // Extracted from trackingData (has id, firstFrame, lastFrame)
   trackingData: FrameData[];
+  selectedPlayerId?: number;
   onClose: () => void;
   onUpdate: (newRoster: RosterPlayer[], newAssignments: Record<string, string>, newIgnored: number[]) => void;
   onSelectPlayer?: (p: Player) => void;
@@ -26,7 +27,7 @@ const getLocationZone = (realX?: number, realY?: number) => {
 };
 
 export const TrackletStitcher: React.FC<TrackletStitcherProps> = ({
-  roster, assignments, ignoredTracks, players, trackingData, onClose, onUpdate, onSelectPlayer
+  roster, assignments, ignoredTracks, players, trackingData, selectedPlayerId, onClose, onUpdate, onSelectPlayer
 }) => {
   const [localRoster, setLocalRoster] = useState<RosterPlayer[]>(roster);
   const [localAssignments, setLocalAssignments] = useState<Record<string, string>>(assignments);
@@ -77,20 +78,19 @@ export const TrackletStitcher: React.FC<TrackletStitcherProps> = ({
     }
   };
 
-  // Check temporal overlap
-  const checkOverlap = (targetRosterId: string, draggedPlayerId: string | null): boolean => {
-    if (!draggedPlayerId) return false;
-    const draggedPlayer = players.find(p => p.id.toString() === draggedPlayerId);
-    if (!draggedPlayer) return false;
+  // Check temporal overlap against a specific roster row
+  const checkOverlap = (targetRosterId: string, testPlayerId: string | null): boolean => {
+    if (!testPlayerId) return false;
+    const testPlayer = players.find(p => p.id.toString() === testPlayerId);
+    if (!testPlayer) return false;
 
     // Find all tracklets currently assigned to this roster ID
-    const assignedIds = Object.keys(localAssignments).filter(k => localAssignments[k] === targetRosterId && k !== draggedPlayerId);
+    const assignedIds = Object.keys(localAssignments).filter(k => localAssignments[k] === targetRosterId && k !== testPlayerId);
     
-    // Check if draggedPlayer's frames overlap with any assigned tracklet
     for (const aId of assignedIds) {
       const assignedPlayer = players.find(p => p.id.toString() === aId);
       if (assignedPlayer) {
-        if (draggedPlayer.firstFrame <= assignedPlayer.lastFrame && draggedPlayer.lastFrame >= assignedPlayer.firstFrame) {
+        if (testPlayer.firstFrame <= assignedPlayer.lastFrame && testPlayer.lastFrame >= assignedPlayer.firstFrame) {
           return true; // Overlap!
         }
       }
@@ -104,22 +104,58 @@ export const TrackletStitcher: React.FC<TrackletStitcherProps> = ({
     onUpdate(updated, localAssignments, localIgnored);
   };
 
-  // Group raw players by their assigned roster profile
-  const rosterGroups = localRoster.map(r => {
-    const assignedPlayerIds = Object.keys(localAssignments).filter(k => localAssignments[k] === r.id);
-    const assignedPlayers = players.filter(p => assignedPlayerIds.includes(p.id.toString()));
-    return { rosterProfile: r, assignedPlayers };
-  }).filter(group => group.assignedPlayers.length > 0); // Hide empty auto-populated profiles
+  // Group raw players by their assigned roster profile and sort them smartly
+  const sortedRosterGroups = useMemo(() => {
+    const groups = localRoster.map(r => {
+      const assignedPlayerIds = Object.keys(localAssignments).filter(k => localAssignments[k] === r.id);
+      const assignedPlayers = players.filter(p => assignedPlayerIds.includes(p.id.toString()));
+      return { rosterProfile: r, assignedPlayers };
+    }).filter(group => group.assignedPlayers.length > 0);
+    
+    if (!selectedPlayerId) return groups;
+    
+    const selectedTrack = players.find(p => p.id === selectedPlayerId);
+    if (!selectedTrack) return groups;
+
+    return groups.sort((a, b) => {
+      const aHasSelected = a.assignedPlayers.some(p => p.id === selectedPlayerId);
+      const bHasSelected = b.assignedPlayers.some(p => p.id === selectedPlayerId);
+      
+      if (aHasSelected) return -1;
+      if (bHasSelected) return 1;
+
+      const aOverlaps = checkOverlap(a.rosterProfile.id, selectedPlayerId.toString());
+      const bOverlaps = checkOverlap(b.rosterProfile.id, selectedPlayerId.toString());
+      
+      if (aOverlaps && !bOverlaps) return 1;
+      if (!aOverlaps && bOverlaps) return -1;
+
+      // Both don't overlap, rank by shortest time gap to selectedTrack
+      const getMinGap = (group: typeof a) => {
+        let min = Infinity;
+        group.assignedPlayers.forEach(p => {
+          if (p.lastFrame < selectedTrack.firstFrame) {
+            min = Math.min(min, selectedTrack.firstFrame - p.lastFrame);
+          } else if (p.firstFrame > selectedTrack.lastFrame) {
+            min = Math.min(min, p.firstFrame - selectedTrack.lastFrame);
+          }
+        });
+        return min;
+      };
+
+      return getMinGap(a) - getMinGap(b);
+    });
+  }, [localRoster, localAssignments, players, selectedPlayerId]);
 
   return (
-    <div className="fixed inset-0 bg-slate-900/95 z-50 flex flex-col p-8 overflow-hidden text-slate-200">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-blue-400">Tracklet Stitcher</h1>
-        <button onClick={onClose} className="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded font-bold">Done</button>
+    <div className="fixed bottom-0 left-0 right-0 h-[55vh] bg-slate-900 border-t-[3px] border-blue-500 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-50 flex flex-col p-4 overflow-hidden text-slate-200">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold text-blue-400">Tracklet Stitcher</h1>
+        <button onClick={onClose} className="bg-slate-700 hover:bg-slate-600 px-4 py-1.5 rounded font-bold text-sm">Done</button>
       </div>
       
       <div className="flex-1 overflow-y-auto mb-4 border border-slate-700 rounded-lg bg-slate-800 p-4">
-        {rosterGroups.map(group => {
+        {sortedRosterGroups.map(group => {
           const isOverlapping = checkOverlap(group.rosterProfile.id, draggingPlayerId);
           return (
             <div 
