@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { RosterPlayer } from '../api';
-import { FrameData, Player } from '../App';
+import type { RosterPlayer } from '../api';
+import type { FrameData, Player } from '../App';
 
 interface TrackletStitcherProps {
   roster: RosterPlayer[];

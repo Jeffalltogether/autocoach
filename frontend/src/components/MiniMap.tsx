@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import type { RefObject } from 'react';
 import type { FrameData } from '../App';
-import { RosterPlayer } from '../api';
+import type { RosterPlayer } from '../api';
 
 interface MiniMapProps {
   videoRef: RefObject<HTMLVideoElement | null>;

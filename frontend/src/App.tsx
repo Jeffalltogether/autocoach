@@ -6,7 +6,8 @@ import { TimelinePlot } from './components/TimelinePlot';
 import { MiniMap } from './components/MiniMap';
 import { TrackletStitcher } from './components/TrackletStitcher';
 import { getDirectVideoUrl, getProxyJsonUrl } from './utils/urlParser';
-import { fetchAssignments, saveAssignments, RosterPlayer, RosterAssignments } from './api';
+import { fetchAssignments, saveAssignments } from './api';
+import type { RosterPlayer } from './api';
 
 export interface Session { id: string; name: string; videoUrl: string; jsonUrl: string; }
 

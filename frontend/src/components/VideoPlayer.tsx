@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import type { FrameData } from '../App';
-import { RosterPlayer } from '../api';
+import type { RosterPlayer } from '../api';
 
 interface VideoPlayerProps {
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -48,7 +48,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   showPucks,
   puckConfThreshold,
   cropSize,
-  fps
+  fps,
+  roster,
+  assignments,
+  ignoredTracks
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentFrameData, setCurrentFrameData] = useState<FrameData | null>(null);
