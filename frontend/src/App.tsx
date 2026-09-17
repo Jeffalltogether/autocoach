@@ -129,30 +129,36 @@ function App() {
         }
 
         // Fetch roster assignments from local API
+        const handleRosterData = (rosterData: any) => {
+          let loadedRoster = rosterData?.roster || [];
+          let loadedAssignments = rosterData?.assignments || {};
+          let loadedIgnored = rosterData?.ignored_tracks || [];
+          
+          if (loadedRoster.length === 0) {
+            const defaultColors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#f97316', '#06b6d4', '#ec4899'];
+            loadedRoster = extractedPlayers.map((p, idx) => ({
+              id: `r_${p.id}`,
+              name: p.name,
+              jersey: '',
+              color: defaultColors[idx % defaultColors.length]
+            }));
+            extractedPlayers.forEach(p => {
+              loadedAssignments[p.id.toString()] = `r_${p.id}`;
+            });
+          }
+          
+          setRoster(loadedRoster);
+          setAssignments(loadedAssignments);
+          setIgnoredTracks(loadedIgnored);
+        };
+
+        // Fetch roster assignments from local API
         fetchAssignments(selectedSession.id)
-          .then(rosterData => {
-            let loadedRoster = rosterData.roster || [];
-            let loadedAssignments = rosterData.assignments || {};
-            
-            // Auto-populate based on unique tracking IDs if no roster exists
-            if (loadedRoster.length === 0) {
-              const defaultColors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#f97316', '#06b6d4', '#ec4899'];
-              loadedRoster = extractedPlayers.map((p, idx) => ({
-                id: `r_${p.id}`,
-                name: p.name,
-                jersey: '',
-                color: defaultColors[idx % defaultColors.length]
-              }));
-              extractedPlayers.forEach(p => {
-                loadedAssignments[p.id.toString()] = `r_${p.id}`;
-              });
-            }
-            
-            setRoster(loadedRoster);
-            setAssignments(loadedAssignments);
-            setIgnoredTracks(rosterData.ignored_tracks || []);
-          })
-          .catch(err => console.warn("Could not load roster assignments from API. Is the server running?", err));
+          .then(handleRosterData)
+          .catch(err => {
+            console.warn("Could not load roster assignments from API. Using local auto-populated state.", err);
+            handleRosterData({});
+          });
 
       })
       .catch(err => console.error("Error loading pose tracking data", err));

@@ -20,6 +20,12 @@ export const TrackletStitcher: React.FC<TrackletStitcherProps> = ({
   const [localIgnored, setLocalIgnored] = useState<number[]>(ignoredTracks);
   const [draggingPlayerId, setDraggingPlayerId] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    setLocalRoster(roster);
+    setLocalAssignments(assignments);
+    setLocalIgnored(ignoredTracks);
+  }, [roster, assignments, ignoredTracks]);
+
   // Compute max frame for scale
   const maxFrame = useMemo(() => {
     return players.reduce((max, p) => Math.max(max, p.lastFrame), 0);
