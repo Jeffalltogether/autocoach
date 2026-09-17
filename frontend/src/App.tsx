@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Toolbar } from './components/Toolbar';
 import { VideoPlayer } from './components/VideoPlayer';
@@ -164,7 +164,72 @@ function App() {
       .catch(err => console.error("Error loading pose tracking data", err));
   }, [selectedSession]);
 
+
+  // Unify tracklets based on assignments so child components see stitched players seamlessly
+  const mergedPlayers = useMemo(() => {
+    return roster.map(r => {
+      const assignedIds = Object.keys(assignments).filter(k => assignments[k] === r.id);
+      if (assignedIds.length === 0) return null;
+      let first = Infinity, last = -Infinity;
+      assignedIds.forEach(id => {
+        const p = players.find(x => x.id.toString() === id);
+        if (p) { first = Math.min(first, p.firstFrame); last = Math.max(last, p.lastFrame); }
+      });
+      return { id: parseInt(assignedIds[0]), name: r.name, firstFrame: first, lastFrame: last };
+    }).filter(Boolean) as Player[];
+  }, [roster, assignments, players]);
+
+  const mergedPlayerStats = useMemo(() => {
+    const newStats: Record<string, any> = {};
+    roster.forEach(r => {
+      const assignedIds = Object.keys(assignments).filter(k => assignments[k] === r.id);
+      if (assignedIds.length === 0) return;
+      const primaryId = assignedIds[0];
+      const agg = { max_velocity_mph: 0, total_distance_ft: 0, time_on_ice_sec: 0, possession_time_sec: 0, globe_trotter_pct: 0, speed_bursts: 0, energizer_ratio: 0, radar_scores: { hustle: 0, speed: 0, energizer: 0, globe_trotter: 0 } };
+      assignedIds.forEach(id => {
+        const ps = playerStats[id] || playerStats[parseInt(id)];
+        if (ps) {
+          agg.max_velocity_mph = Math.max(agg.max_velocity_mph, ps.max_velocity_mph || 0);
+          agg.total_distance_ft += ps.total_distance_ft || 0;
+          agg.possession_time_sec += ps.possession_time_sec || 0;
+          agg.globe_trotter_pct = Math.max(agg.globe_trotter_pct, ps.globe_trotter_pct || 0);
+          agg.speed_bursts += ps.speed_bursts || 0;
+          agg.energizer_ratio = Math.max(agg.energizer_ratio, ps.energizer_ratio || 0);
+          if (ps.radar_scores) {
+             agg.radar_scores.hustle = Math.max(agg.radar_scores.hustle, ps.radar_scores.hustle || 0);
+             agg.radar_scores.speed = Math.max(agg.radar_scores.speed, ps.radar_scores.speed || 0);
+             agg.radar_scores.energizer = Math.max(agg.radar_scores.energizer, ps.radar_scores.energizer || 0);
+             agg.radar_scores.globe_trotter = Math.max(agg.radar_scores.globe_trotter, ps.radar_scores.globe_trotter || 0);
+          }
+        }
+      });
+      newStats[primaryId] = agg;
+    });
+    return newStats;
+  }, [roster, assignments, playerStats]);
+
+  const mergedTrackingData = useMemo(() => {
+    const idMap = new Map<number, number>();
+    roster.forEach(r => {
+      const assignedIds = Object.keys(assignments).filter(k => assignments[k] === r.id);
+      if (assignedIds.length > 0) {
+        const primaryId = parseInt(assignedIds[0]);
+        assignedIds.forEach(id => idMap.set(parseInt(id), primaryId));
+      }
+    });
+    return trackingData.map(frame => {
+      const newPlayers: PlayerTracking[] = [];
+      const seenIds = new Set<number>();
+      frame.players.forEach(p => {
+        const newId = idMap.has(p.id) ? idMap.get(p.id)! : p.id;
+        if (!seenIds.has(newId)) { seenIds.add(newId); newPlayers.push({ ...p, id: newId }); }
+      });
+      return { ...frame, players: newPlayers };
+    });
+  }, [trackingData, roster, assignments]);
+
   const handleSelectPlayer = (p: Player) => {
+
     setSelectedPlayer(p);
     // Jump video to first appearance
     if (videoRef.current) {
@@ -177,10 +242,10 @@ function App() {
     <div className="flex flex-col md:flex-row h-screen w-screen bg-slate-900 overflow-hidden font-sans text-slate-200">
       <Sidebar 
         sessions={sessions}
-        players={players}
+        players={mergedPlayers}
         selectedSession={selectedSession}
         selectedPlayer={selectedPlayer}
-        playerStats={playerStats}
+        playerStats={mergedPlayerStats}
         onSelectSession={setSelectedSession}
         onSelectPlayer={handleSelectPlayer}
         onOpenStitcher={() => setShowStitcher(true)}
@@ -215,7 +280,7 @@ function App() {
         <VideoPlayer 
           videoRef={videoRef}
           videoUrl={selectedSession?.videoUrl || ''}
-          trackingData={trackingData}
+          trackingData={mergedTrackingData}
           roster={roster}
           assignments={assignments}
           ignoredTracks={ignoredTracks}
