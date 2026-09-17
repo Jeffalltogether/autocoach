@@ -234,16 +234,16 @@ def apply_physics_and_events(frames_data, homography_matrix, fps):
         stats["possession_time_sec"] = round(stats["possession_frames"] / fps, 2)
         stats["energizer_ratio"] = round(stats["active_frames"] / max(1, stats["total_frames_on_ice"]), 2)
         
-        # Globe Trotter Percentage (Assuming ~17000 sq ft NHL Rink, 25 sq ft per cell)
+        # Globe Trotter Percentage (Assuming Youth Cross-Ice Play = 1/3 of NHL rink = ~5666 sq ft)
         visited_area = len(stats.get("visited_cells", set())) * 25.0
-        globe_trotter_pct = round(min(100.0, (visited_area / 17000.0) * 100), 1)
+        globe_trotter_pct = round(min(100.0, (visited_area / 5666.0) * 100), 1)
         stats["globe_trotter_pct"] = globe_trotter_pct
         
         stats["radar_scores"] = {
             "hustle": min(100, int((stats["total_distance_ft"] / 3000.0) * 100)),
             "speed": min(100, int((stats["speed_bursts"] / 10.0) * 100)),
             "energizer": int(stats["energizer_ratio"] * 100),
-            "globe_trotter": min(100, int((globe_trotter_pct / 30.0) * 100)) # Assume 30% coverage = max radar score
+            "globe_trotter": min(100, int((globe_trotter_pct / 30.0) * 100)) # 30% of a cross-ice zone is still a massive effort
         }
         
         del stats["possession_frames"]

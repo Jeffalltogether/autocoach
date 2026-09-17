@@ -4,7 +4,9 @@ import { Toolbar } from './components/Toolbar';
 import { VideoPlayer } from './components/VideoPlayer';
 import { TimelinePlot } from './components/TimelinePlot';
 import { MiniMap } from './components/MiniMap';
+import { TrackletStitcher } from './components/TrackletStitcher';
 import { getDirectVideoUrl, getProxyJsonUrl } from './utils/urlParser';
+import { fetchAssignments, saveAssignments, RosterPlayer, RosterAssignments } from './api';
 
 export interface Session { id: string; name: string; videoUrl: string; jsonUrl: string; }
 
@@ -42,6 +44,10 @@ function App() {
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [trackingData, setTrackingData] = useState<FrameData[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [roster, setRoster] = useState<RosterPlayer[]>([]);
+  const [assignments, setAssignments] = useState<Record<string, string>>({});
+  const [ignoredTracks, setIgnoredTracks] = useState<number[]>([]);
+  const [showStitcher, setShowStitcher] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [playerStats, setPlayerStats] = useState<Record<string, any>>({});
   const [showAllBoundingBoxes, setShowAllBoundingBoxes] = useState(true);
@@ -120,6 +126,33 @@ function App() {
         if (extractedPlayers.length > 0) {
           setSelectedPlayer(extractedPlayers[0]);
         }
+
+        // Fetch roster assignments from local API
+        fetchAssignments(selectedSession.id)
+          .then(rosterData => {
+            let loadedRoster = rosterData.roster || [];
+            let loadedAssignments = rosterData.assignments || {};
+            
+            // Auto-populate based on unique tracking IDs if no roster exists
+            if (loadedRoster.length === 0) {
+              const defaultColors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#f97316', '#06b6d4', '#ec4899'];
+              loadedRoster = extractedPlayers.map((p, idx) => ({
+                id: `r_${p.id}`,
+                name: p.name,
+                jersey: '',
+                color: defaultColors[idx % defaultColors.length]
+              }));
+              extractedPlayers.forEach(p => {
+                loadedAssignments[p.id.toString()] = `r_${p.id}`;
+              });
+            }
+            
+            setRoster(loadedRoster);
+            setAssignments(loadedAssignments);
+            setIgnoredTracks(rosterData.ignored_tracks || []);
+          })
+          .catch(err => console.warn("Could not load roster assignments from API. Is the server running?", err));
+
       })
       .catch(err => console.error("Error loading pose tracking data", err));
   }, [selectedSession]);
@@ -142,14 +175,41 @@ function App() {
         selectedPlayer={selectedPlayer}
         playerStats={playerStats}
         onSelectSession={setSelectedSession}
-        onSelectPlayer={(p) => handleSelectPlayer(p)}
+        onSelectPlayer={handleSelectPlayer}
+        onOpenStitcher={() => setShowStitcher(true)}
       />
+
+      {showStitcher && selectedSession && (
+        <TrackletStitcher
+          roster={roster}
+          assignments={assignments}
+          ignoredTracks={ignoredTracks}
+          players={players}
+          trackingData={trackingData}
+          onClose={() => setShowStitcher(false)}
+          onUpdate={(newRoster, newAssignments, newIgnored) => {
+            setRoster(newRoster);
+            setAssignments(newAssignments);
+            setIgnoredTracks(newIgnored);
+            saveAssignments(selectedSession.id, {
+              version: "1.0",
+              video_id: selectedSession.id,
+              roster: newRoster,
+              assignments: newAssignments,
+              ignored_tracks: newIgnored
+            }).catch(e => console.error("Failed to save assignments to API", e));
+          }}
+        />
+      )}
       
       <div className="flex-1 flex flex-col min-w-0">
         <VideoPlayer 
           videoRef={videoRef}
           videoUrl={selectedSession?.videoUrl || ''}
           trackingData={trackingData}
+          roster={roster}
+          assignments={assignments}
+          ignoredTracks={ignoredTracks}
           selectedPlayerId={selectedPlayer?.id}
           selectedPlayerFirstFrame={selectedPlayer?.firstFrame}
           selectedPlayerLastFrame={selectedPlayer?.lastFrame}
@@ -179,6 +239,9 @@ function App() {
           <MiniMap 
             videoRef={videoRef}
             trackingData={trackingData}
+            roster={roster}
+            assignments={assignments}
+            ignoredTracks={ignoredTracks}
             fps={fps}
             selectedPlayerId={selectedPlayer?.id}
           />

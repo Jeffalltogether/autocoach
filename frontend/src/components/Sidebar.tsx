@@ -11,6 +11,7 @@ interface SidebarProps {
   playerStats: Record<string, any>;
   onSelectSession: (s: Session) => void;
   onSelectPlayer: (p: Player) => void;
+  onOpenStitcher?: () => void;
 }
 
 const CustomTick = ({ payload, x, y, textAnchor, stroke, radius }: any) => {
@@ -35,12 +36,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
   selectedPlayer,
   playerStats,
   onSelectSession,
-  onSelectPlayer
+  onSelectPlayer,
+  onOpenStitcher
 }) => {
   return (
     <div className="w-full md:w-64 md:h-full h-48 md:max-h-none bg-slate-800 text-slate-100 flex flex-col md:flex-col overflow-hidden border-b md:border-r border-slate-700 shrink-0">
+      <div className="p-4 border-b border-slate-700 flex justify-between items-center">
+        <h2 className="text-xl font-bold text-blue-400">AutoCoach</h2>
+        {onOpenStitcher && (
+          <button 
+            onClick={onOpenStitcher}
+            className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shadow"
+          >
+            Stitch Tracks
+          </button>
+        )}
+      </div>
       <div className="p-4 border-b border-slate-700">
-        <h2 className="text-xl font-bold mb-4 text-blue-400">AutoCoach</h2>
         <h3 className="text-sm uppercase tracking-wider text-slate-400 font-semibold mb-2">Sessions</h3>
         <div className="flex flex-col gap-2">
           {sessions.map(session => (

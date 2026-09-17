@@ -1,10 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import type { RefObject } from 'react';
 import type { FrameData } from '../App';
+import { RosterPlayer } from '../api';
 
 interface MiniMapProps {
   videoRef: RefObject<HTMLVideoElement | null>;
   trackingData: FrameData[];
+  roster: RosterPlayer[];
+  assignments: Record<string, string>;
+  ignoredTracks: number[];
   fps: number;
   selectedPlayerId?: number;
 }
@@ -12,6 +16,9 @@ interface MiniMapProps {
 export const MiniMap: React.FC<MiniMapProps> = ({
   videoRef,
   trackingData,
+  roster,
+  assignments,
+  ignoredTracks,
   fps,
   selectedPlayerId
 }) => {
@@ -214,6 +221,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
           
           {/* Dots representing players */}
           {!showHeatmap && currentFrameData?.players.map(player => {
+            if (ignoredTracks.includes(player.id)) return null;
             if (player.real_x === undefined || player.real_y === undefined) return null;
             
             const mappedX = player.real_x + NEUTRAL_ZONE_OFFSET_X;
@@ -223,6 +231,17 @@ export const MiniMap: React.FC<MiniMapProps> = ({
             const isPossessing = player.has_puck;
             
             let color = "#22c55e"; // Default green
+            let labelText = player.id.toString();
+            
+            const rosterId = assignments[player.id.toString()];
+            if (rosterId) {
+              const assignedRoster = roster.find(r => r.id === rosterId);
+              if (assignedRoster) {
+                color = assignedRoster.color;
+                labelText = assignedRoster.jersey || assignedRoster.name.substring(0, 2);
+              }
+            }
+
             if (isSelected) color = "#ef4444"; // Selected red
             if (isPossessing && !isSelected) color = "#eab308"; // Possessing yellow
             
@@ -246,7 +265,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
                   fontFamily="sans-serif"
                   fontWeight="bold"
                 >
-                  {player.id}
+                  {labelText}
                 </text>
               </g>
             );
@@ -254,11 +273,21 @@ export const MiniMap: React.FC<MiniMapProps> = ({
 
           {/* If heatmap is on, only show the selected player dot on top of heatmap */}
           {showHeatmap && selectedPlayerId && currentFrameData?.players.map(player => {
+            if (ignoredTracks.includes(player.id)) return null;
             if (player.id !== selectedPlayerId || player.real_x === undefined || player.real_y === undefined) return null;
             
             const mappedX = player.real_x + NEUTRAL_ZONE_OFFSET_X;
             const mappedY = player.real_y;
             
+            let labelText = player.id.toString();
+            const rosterId = assignments[player.id.toString()];
+            if (rosterId) {
+              const assignedRoster = roster.find(r => r.id === rosterId);
+              if (assignedRoster) {
+                labelText = assignedRoster.jersey || assignedRoster.name.substring(0, 2);
+              }
+            }
+
             return (
               <g key={player.id}>
                 <circle 
@@ -279,7 +308,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
                   fontFamily="sans-serif"
                   fontWeight="bold"
                 >
-                  {player.id}
+                  {labelText}
                 </text>
               </g>
             );

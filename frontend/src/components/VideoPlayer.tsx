@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import type { FrameData } from '../App';
+import { RosterPlayer } from '../api';
 
 interface VideoPlayerProps {
   videoRef: RefObject<HTMLVideoElement | null>;
   videoUrl: string;
   trackingData: FrameData[];
+  roster: RosterPlayer[];
+  assignments: Record<string, string>;
+  ignoredTracks: number[];
   selectedPlayerId?: number;
   selectedPlayerFirstFrame?: number;
   selectedPlayerLastFrame?: number;
@@ -151,6 +155,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             {/* Draw Skeletons and Bounding Boxes via SVG */}
             <svg className="absolute inset-0 w-full h-full pointer-events-none z-20" viewBox={`0 0 ${videoDimensions.width} ${videoDimensions.height}`}>
               {currentFrameData.players.map((player) => {
+                if (ignoredTracks.includes(player.id)) return null;
+
                 const isSelected = player.id === selectedPlayerId;
                 const showBox = showAllBoundingBoxes || (showPlayerBoundingBox && isSelected);
                 const showPose = showAllPoses || (showPlayerPose && isSelected);
@@ -159,6 +165,23 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
                 const top = player.y - player.height / 2;
                 const left = player.x - player.width / 2;
+
+                let displayName = `Player #${player.id}`;
+                let strokeColor = isSelected ? "#ef4444" : "#3b82f6";
+                let fillColor = isSelected ? "rgba(239, 68, 68, 0.2)" : "rgba(59, 130, 246, 0.1)";
+                
+                const rosterId = assignments[player.id.toString()];
+                if (rosterId) {
+                  const assignedRoster = roster.find(r => r.id === rosterId);
+                  if (assignedRoster) {
+                    displayName = assignedRoster.name;
+                    strokeColor = assignedRoster.color;
+                    fillColor = isSelected ? "rgba(255, 255, 255, 0.3)" : `${assignedRoster.color}33`; // Highlight selection logic
+                    if (isSelected) {
+                      strokeColor = "#ffffff";
+                    }
+                  }
+                }
 
                 return (
                   <g key={`player-${player.id}`}>
@@ -171,27 +194,20 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                           if (pt1 && pt2 && pt1.conf > 0.1 && pt2.conf > 0.1) {
                             return (
                               <line 
-                                key={`line-${idx}`} 
+                                key={`line-${idx}`}
                                 x1={pt1.x} y1={pt1.y} 
                                 x2={pt2.x} y2={pt2.y} 
-                                stroke={isSelected ? "#ef4444" : "#4ade80"} 
-                                strokeWidth="8" strokeOpacity="0.9" 
+                                stroke={strokeColor} 
+                                strokeWidth="4" 
                               />
                             );
                           }
                           return null;
                         })}
-                        {/* Dots */}
+                        {/* Points */}
                         {player.keypoints?.map((pt, idx) => {
-                          if (pt && pt.conf > 0.1) {
-                            return (
-                              <circle 
-                                key={`pt-${idx}`} 
-                                cx={pt.x} cy={pt.y} 
-                                r="8" 
-                                fill={isSelected ? "#dc2626" : "#22c55e"} 
-                              />
-                            );
+                          if (pt.conf > 0.1) {
+                            return <circle key={`pt-${idx}`} cx={pt.x} cy={pt.y} r="4" fill="#ffffff" />;
                           }
                           return null;
                         })}
@@ -203,24 +219,24 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                         <rect 
                           x={left} y={top} 
                           width={player.width} height={player.height} 
-                          fill={isSelected ? "rgba(239, 68, 68, 0.2)" : "rgba(59, 130, 246, 0.1)"}
-                          stroke={isSelected ? "#ef4444" : "#3b82f6"}
-                          strokeWidth="4"
+                          fill={fillColor}
+                          stroke={strokeColor}
+                          strokeWidth={isSelected ? "5" : "3"}
                         />
                         {/* Player ID Label */}
                         <rect 
                           x={left} y={top - 30} 
                           width={140} height={30} 
-                          fill={isSelected ? "#ef4444" : "#3b82f6"} 
+                          fill={strokeColor} 
                         />
                         <text 
                           x={left + 5} y={top - 8} 
-                          fill="#ffffff" 
-                          fontSize="24" 
-                          fontFamily="monospace"
+                          fill={isSelected ? "#000000" : "#ffffff"} 
+                          fontSize="22" 
+                          fontFamily="sans-serif"
                           fontWeight="bold"
                         >
-                          Player #{player.id}
+                          {displayName}
                         </text>
                       </g>
                     )}
